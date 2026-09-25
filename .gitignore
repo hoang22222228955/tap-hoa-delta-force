@@ -3,3 +3,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.zip
+__pycache__/
+*.pyc
+.env
+data/
+images/*.webp
