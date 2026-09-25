@@ -3374,3 +3374,28 @@ html[data-theme="light"] .df-page {
   .df-page #account-tabs { gap: 5px !important; }
   .df-page #account-tabs .df-tab { font-size: 7.5px !important; }
 }
+
+/* ==========================================================================\n   V29.1 — ACCOUNT TAB TEXT CONTRAST\n   Stronger, crisper labels for the account category selector.\n   ========================================================================== */
+.df-page #account-tabs .df-tab {
+  color: #e4f8f1 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 0 7px rgba(93, 239, 166, .10);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+.df-page #account-tabs .df-tab:hover {
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 0 9px rgba(93, 239, 166, .18);
+}
+.df-page #account-tabs .df-tab.active {
+  color: #031b12 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.22);
+}
+@media (max-width: 700px) {
+  .df-page #account-tabs .df-tab {
+    font-weight: 900 !important;
+    color: #ecfff7 !important;
+  }
+  .df-page #account-tabs .df-tab.active { color: #031b12 !important; }
+}
