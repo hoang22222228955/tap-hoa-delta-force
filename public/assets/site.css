@@ -2903,16 +2903,20 @@ html[data-theme="light"] .df-page {
 .df-page .modal-gallery-meta strong { color: #ffd064; border-color: rgba(255,190,65,.34); }
 .df-page .modal-gallery-nav {
   position: absolute;
-  z-index: 4;
+  z-index: 8;
   top: 50%;
-  width: 42px;
-  height: 64px;
+  width: 48px;
+  height: 68px;
   transform: translateY(-50%);
-  border: 1px solid rgba(86,198,164,.32);
+  border: 1px solid rgba(86,198,164,.42);
   color: #eafbf4;
-  background: rgba(3,14,18,.76);
+  background: rgba(3,14,18,.86);
   font: 400 38px/1 "Chakra Petch", sans-serif;
   backdrop-filter: blur(6px);
+  pointer-events: auto !important;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
 }
 .df-page .modal-gallery-nav:hover { border-color: #34ed9b; background: rgba(11,43,38,.9); }
 .df-page .modal-gallery-nav:disabled { opacity: 0; pointer-events: none; }
@@ -2950,13 +2954,6 @@ html[data-theme="light"] .df-page {
   opacity: 1;
   border-color: #34ed9b;
   box-shadow: 0 0 0 1px rgba(52,237,155,.26), 0 0 18px rgba(52,237,155,.1);
-}
-.df-page .modal-gallery-hint {
-  color: #7fa49a;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
 }
 .df-page .modal-gallery-empty {
   min-height: 500px;

@@ -98,9 +98,25 @@
         <button class="modal-gallery-nav modal-gallery-next" type="button" data-gallery-step="1" aria-label="Ảnh tiếp theo"${sources.length < 2 ? ' disabled' : ''}>›</button>
       </div>
       <div class="modal-gallery-strip" aria-label="Danh sách ảnh sản phẩm">${thumbs}</div>
-      <div class="modal-gallery-hint">Ảnh được giữ đúng tỉ lệ · chọn thumbnail để xem đầy đủ</div>
     </div>`;
     art.dataset.galleryIndex = '0';
+
+    // Bind gallery controls directly after each render. This avoids modal-level
+    // click delegation or overlay rules swallowing the previous/next clicks.
+    $$('[data-gallery-index]', art).forEach(button => {
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectProductGallery(Number(button.dataset.galleryIndex));
+      });
+    });
+    $$('[data-gallery-step]', art).forEach(button => {
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        stepProductGallery(Number(button.dataset.galleryStep));
+      });
+    });
   }
 
   function stepProductGallery(delta) {
@@ -531,12 +547,12 @@
     document.addEventListener('click', event => {
       const galleryThumb = event.target.closest('[data-gallery-index]');
       if (galleryThumb) {
-        selectProductGallery(Number(galleryThumb.dataset.galleryIndex));
+        if (!event.defaultPrevented) selectProductGallery(Number(galleryThumb.dataset.galleryIndex));
         return;
       }
       const galleryStep = event.target.closest('[data-gallery-step]');
       if (galleryStep) {
-        stepProductGallery(Number(galleryStep.dataset.galleryStep));
+        if (!event.defaultPrevented) stepProductGallery(Number(galleryStep.dataset.galleryStep));
         return;
       }
       const detail = event.target.closest('[data-detail]');
