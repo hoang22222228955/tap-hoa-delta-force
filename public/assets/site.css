@@ -2798,3 +2798,229 @@ html[data-theme="light"] .df-page {
   position: relative;
   z-index: 1;
 }
+
+/* V27 — Product detail gallery: preserve image ratio, support cover + 20 detail images. */
+.df-page .product-modal {
+  width: min(1160px, calc(100% - 28px));
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, .75fr);
+  max-height: min(94dvh, 900px);
+  border-color: rgba(79, 219, 157, .28);
+  background: #071317;
+  box-shadow: 0 34px 110px rgba(0,0,0,.7), 0 0 0 1px rgba(62,214,151,.06) inset;
+}
+.df-page .product-modal[open] { display: grid; }
+.df-page .product-modal .modal-close {
+  top: 14px;
+  right: 14px;
+  width: 43px;
+  height: 43px;
+  border: 1px solid rgba(255,183,48,.72);
+  border-radius: 8px;
+  color: #d8e8e2;
+  background: rgba(8,24,31,.94);
+  box-shadow: 0 0 0 2px rgba(255,166,0,.08);
+}
+.df-page .product-modal .modal-close:hover {
+  color: #fff;
+  border-color: #34ed9b;
+  background: #102b29;
+}
+.df-page .modal-product-art {
+  min-width: 0;
+  min-height: 620px;
+  padding: 22px;
+  display: block;
+  overflow: hidden;
+  border-right: 1px solid rgba(79,219,157,.18);
+  background:
+    linear-gradient(rgba(71,229,166,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(71,229,166,.035) 1px, transparent 1px),
+    radial-gradient(circle at 70% 18%, rgba(46,114,255,.17), transparent 32%),
+    #061015;
+  background-size: 28px 28px, 28px 28px, auto, auto;
+}
+.df-page .modal-product-art::before,
+.df-page .modal-product-art::after { content: none !important; display: none !important; }
+.df-page .modal-gallery-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.df-page .modal-gallery-stage {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(87,177,158,.32);
+  background: #030a0e;
+  box-shadow: 0 18px 50px rgba(0,0,0,.28) inset;
+}
+.df-page .modal-gallery-stage::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  z-index: 1;
+  border: 1px solid rgba(95,191,166,.12);
+  pointer-events: none;
+}
+.df-page .modal-gallery-main {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 600px;
+  min-height: 410px;
+  object-fit: contain;
+  object-position: center;
+  background: #03090c;
+}
+.df-page .modal-gallery-meta {
+  position: absolute;
+  z-index: 3;
+  top: 13px;
+  left: 13px;
+  right: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+  font-family: "Chakra Petch", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+.df-page .modal-gallery-meta span,
+.df-page .modal-gallery-meta strong {
+  padding: 6px 9px;
+  border: 1px solid rgba(91,205,166,.28);
+  color: #cfe9df;
+  background: rgba(3,14,18,.82);
+  backdrop-filter: blur(5px);
+}
+.df-page .modal-gallery-meta strong { color: #ffd064; border-color: rgba(255,190,65,.34); }
+.df-page .modal-gallery-nav {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: 42px;
+  height: 64px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(86,198,164,.32);
+  color: #eafbf4;
+  background: rgba(3,14,18,.76);
+  font: 400 38px/1 "Chakra Petch", sans-serif;
+  backdrop-filter: blur(6px);
+}
+.df-page .modal-gallery-nav:hover { border-color: #34ed9b; background: rgba(11,43,38,.9); }
+.df-page .modal-gallery-nav:disabled { opacity: 0; pointer-events: none; }
+.df-page .modal-gallery-prev { left: 13px; }
+.df-page .modal-gallery-next { right: 13px; }
+.df-page .modal-gallery-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #2b6959 #071317;
+  padding: 2px 2px 4px;
+}
+.df-page .modal-gallery-thumb {
+  flex: 0 0 86px;
+  width: 86px;
+  height: 64px;
+  padding: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(102,144,155,.3);
+  border-radius: 4px;
+  background: #071116;
+  opacity: .66;
+}
+.df-page .modal-gallery-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #02070a;
+}
+.df-page .modal-gallery-thumb:hover { opacity: 1; border-color: #7aa8ff; }
+.df-page .modal-gallery-thumb.is-current {
+  opacity: 1;
+  border-color: #34ed9b;
+  box-shadow: 0 0 0 1px rgba(52,237,155,.26), 0 0 18px rgba(52,237,155,.1);
+}
+.df-page .modal-gallery-hint {
+  color: #7fa49a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.df-page .modal-gallery-empty {
+  min-height: 500px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed rgba(95,191,166,.2);
+}
+.df-page .product-modal .modal-content {
+  position: relative;
+  padding: 58px 34px 30px;
+  background:
+    linear-gradient(180deg, rgba(21,53,65,.24), transparent 34%),
+    #0a1b28;
+}
+.df-page .product-modal .modal-content::before {
+  content: "PRODUCT FILE";
+  position: absolute;
+  top: 20px;
+  left: 34px;
+  color: rgba(89,223,165,.72);
+  font: 700 9px "Chakra Petch", sans-serif;
+  letter-spacing: .18em;
+}
+.df-page .product-modal .modal-content h2 {
+  margin-top: 13px;
+  font-size: clamp(27px, 3vw, 36px);
+  line-height: 1.08;
+}
+.df-page .product-modal .modal-price {
+  margin-top: 16px;
+  color: #ffd064;
+  font-size: 30px;
+}
+.df-page .product-modal .modal-specs {
+  gap: 12px 18px;
+  margin: 22px 0 18px;
+  padding: 18px 0;
+  border-color: rgba(83,153,174,.24);
+}
+.df-page .product-modal .modal-note {
+  border-left-color: #34ed9b;
+  background: rgba(26,61,82,.66);
+}
+.df-page .product-modal .full-button { margin-top: 18px; min-height: 47px; }
+
+@media (max-width: 900px) {
+  .df-page .product-modal { grid-template-columns: 1fr; width: min(760px, calc(100% - 20px)); }
+  .df-page .product-modal[open] { display: block; }
+  .df-page .modal-product-art { min-height: 0; padding: 14px; border-right: 0; border-bottom: 1px solid rgba(79,219,157,.18); }
+  .df-page .modal-gallery-stage { aspect-ratio: 16 / 10; }
+  .df-page .modal-gallery-main { min-height: 0; max-height: 58dvh; }
+  .df-page .product-modal .modal-content { padding: 48px 24px 24px; }
+  .df-page .product-modal .modal-content::before { left: 24px; }
+}
+@media (max-width: 560px) {
+  .df-page .product-modal { width: calc(100% - 12px); max-height: calc(100dvh - 12px); border-radius: 4px; }
+  .df-page .modal-product-art { padding: 9px; }
+  .df-page .modal-gallery-stage { aspect-ratio: 1 / 1; }
+  .df-page .modal-gallery-main { max-height: 52dvh; }
+  .df-page .modal-gallery-thumb { flex-basis: 72px; width: 72px; height: 54px; }
+  .df-page .modal-gallery-nav { width: 38px; height: 54px; font-size: 31px; }
+  .df-page .modal-gallery-meta { top: 8px; left: 8px; right: 8px; }
+  .df-page .modal-gallery-meta span { max-width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .df-page .product-modal .modal-content { padding: 46px 18px 20px; }
+  .df-page .product-modal .modal-content::before { left: 18px; }
+}

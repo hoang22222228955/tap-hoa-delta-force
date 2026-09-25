@@ -49,6 +49,68 @@
     });
   }
 
+  function productGallerySources(product) {
+    const raw = [product?.image, ...(Array.isArray(product?.detailImages) ? product.detailImages : [])];
+    const seen = new Set();
+    return raw.map(value => String(value || '').trim()).filter(value => value && !seen.has(value) && seen.add(value)).slice(0, 21);
+  }
+
+  function selectProductGallery(index) {
+    const art = $('#modal-art');
+    if (!art) return;
+    const sources = productGallerySources(state.product);
+    if (!sources.length) return;
+    const next = Math.max(0, Math.min(Number(index) || 0, sources.length - 1));
+    art.dataset.galleryIndex = String(next);
+    const main = $('#modal-gallery-main', art);
+    if (main) {
+      main.src = sources[next];
+      main.alt = `${state.product?.name || 'Ảnh sản phẩm'} — ảnh ${next + 1}`;
+    }
+    const count = $('#modal-gallery-count', art);
+    if (count) count.textContent = `${String(next + 1).padStart(2, '0')} / ${String(sources.length).padStart(2, '0')}`;
+    $$('[data-gallery-index]', art).forEach(button => {
+      const active = Number(button.dataset.galleryIndex) === next;
+      button.classList.toggle('is-current', active);
+      button.setAttribute('aria-current', active ? 'true' : 'false');
+      if (active) button.scrollIntoView({block:'nearest', inline:'nearest'});
+    });
+    const previous = $('[data-gallery-step="-1"]', art);
+    const following = $('[data-gallery-step="1"]', art);
+    if (previous) previous.disabled = sources.length < 2;
+    if (following) following.disabled = sources.length < 2;
+  }
+
+  function renderProductGallery(product) {
+    const sources = productGallerySources(product);
+    const art = $('#modal-art');
+    if (!art) return;
+    if (!sources.length) {
+      art.innerHTML = '<div class="modal-gallery-empty">Chưa có ảnh sản phẩm.</div>';
+      return;
+    }
+    const thumbs = sources.map((source, index) => `<button class="modal-gallery-thumb${index === 0 ? ' is-current' : ''}" type="button" data-gallery-index="${index}" aria-label="Xem ảnh ${index + 1}" aria-current="${index === 0 ? 'true' : 'false'}"><img src="${escapeHTML(source)}" alt="" loading="lazy"></button>`).join('');
+    art.innerHTML = `<div class="modal-gallery-shell">
+      <div class="modal-gallery-stage">
+        <div class="modal-gallery-meta"><span>HỒ SƠ ẢNH / ${escapeHTML(product.id)}</span><strong id="modal-gallery-count">01 / ${String(sources.length).padStart(2, '0')}</strong></div>
+        <img class="modal-gallery-main" id="modal-gallery-main" src="${escapeHTML(sources[0])}" alt="${escapeHTML(product.name)} — ảnh 1">
+        <button class="modal-gallery-nav modal-gallery-prev" type="button" data-gallery-step="-1" aria-label="Ảnh trước"${sources.length < 2 ? ' disabled' : ''}>‹</button>
+        <button class="modal-gallery-nav modal-gallery-next" type="button" data-gallery-step="1" aria-label="Ảnh tiếp theo"${sources.length < 2 ? ' disabled' : ''}>›</button>
+      </div>
+      <div class="modal-gallery-strip" aria-label="Danh sách ảnh sản phẩm">${thumbs}</div>
+      <div class="modal-gallery-hint">Ảnh được giữ đúng tỉ lệ · chọn thumbnail để xem đầy đủ</div>
+    </div>`;
+    art.dataset.galleryIndex = '0';
+  }
+
+  function stepProductGallery(delta) {
+    const art = $('#modal-art');
+    const sources = productGallerySources(state.product);
+    if (!art || sources.length < 2) return;
+    const current = Number(art.dataset.galleryIndex || 0);
+    selectProductGallery((current + delta + sources.length) % sources.length);
+  }
+
   function openDialog(dialog) {
     if (!dialog) return;
     if (typeof dialog.showModal === 'function') {
@@ -431,11 +493,7 @@
     const modal = $('#product-modal');
     if (!modal || !product) return;
     state.product = product;
-    const art = $('#modal-art');
-    if (art) {
-      art.innerHTML = imageMarkup(product.image, product.name);
-      hydrateImages(art);
-    }
+    renderProductGallery(product);
     const set = (id, value) => { const node = $(`#${id}`); if (node) node.textContent = value; };
     set('modal-category', categoryLabel(product.category));
     set('modal-title', product.name);
@@ -443,7 +501,8 @@
     set('modal-description', product.description || 'Shop sẽ xác nhận thông tin thực tế trước khi giao dịch.');
     set('modal-code', product.id);
     set('modal-status', product.status || 'Hỏi shop');
-    set('modal-note', 'Giá và tình trạng là thông tin tham khảo; hãy hỏi shop để nhận ảnh kho và điều kiện bàn giao mới nhất.');
+    const imageCount = productGallerySources(product).length;
+    set('modal-note', imageCount > 1 ? `Có ${imageCount} ảnh tham khảo. Giá và tình trạng có thể thay đổi theo kho; hãy hỏi shop để xác nhận trước khi chốt.` : 'Giá và tình trạng là thông tin tham khảo; hãy hỏi shop để nhận ảnh kho và điều kiện bàn giao mới nhất.');
     openDialog(modal);
   }
 
@@ -470,6 +529,16 @@
 
   function setupInteractions() {
     document.addEventListener('click', event => {
+      const galleryThumb = event.target.closest('[data-gallery-index]');
+      if (galleryThumb) {
+        selectProductGallery(Number(galleryThumb.dataset.galleryIndex));
+        return;
+      }
+      const galleryStep = event.target.closest('[data-gallery-step]');
+      if (galleryStep) {
+        stepProductGallery(Number(galleryStep.dataset.galleryStep));
+        return;
+      }
       const detail = event.target.closest('[data-detail]');
       if (detail) {
         const item = state.catalog.products.find(product => product.id === detail.dataset.detail);
@@ -522,6 +591,11 @@
     ['product-modal', 'contact-modal'].forEach(id => {
       const dialog = $(`#${id}`);
       if (dialog) dialog.addEventListener('click', event => { if (event.target === dialog) closeDialog(dialog); });
+    });
+    const productModal = $('#product-modal');
+    if (productModal) productModal.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); stepProductGallery(-1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); stepProductGallery(1); }
     });
     const search = $('#account-search');
     const sort = $('#account-sort');

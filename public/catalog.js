@@ -113,7 +113,8 @@ window.DELTA_CATALOG = {
       "spec": "Còn hàng · Bàn giao qua Zalo",
       "image": "https://cdn.vn.garenanow.com/web/deltaforce/public/df_home/post_generic.jpg",
       "atlasIndex": null,
-      "description": "Acc Reg Skin được kiểm tra tình trạng trước khi bàn giao. Shop gửi ảnh và thông tin thực tế qua Zalo."
+      "description": "Acc Reg Skin được kiểm tra tình trạng trước khi bàn giao. Shop gửi ảnh và thông tin thực tế qua Zalo.",
+      "detailImages": []
     },
     {
       "id": "REG-002",
@@ -123,7 +124,8 @@ window.DELTA_CATALOG = {
       "spec": "Còn hàng · Nhiều skin",
       "image": "https://cdn.vn.garenanow.com/web/deltaforce/public/df_home/post_generic.jpg",
       "atlasIndex": null,
-      "description": "Gói acc có bộ sưu tập skin phong phú hơn, phù hợp người muốn vào game với nền tảng sẵn có."
+      "description": "Gói acc có bộ sưu tập skin phong phú hơn, phù hợp người muốn vào game với nền tảng sẵn có.",
+      "detailImages": []
     },
     {
       "id": "OP-001",
@@ -133,7 +135,8 @@ window.DELTA_CATALOG = {
       "spec": "Còn hàng · Chế độ Chiến Dịch",
       "image": "https://web.df.garena.com/02_h5/240923_official_website/vi/pc/gamemode_list_02.jpg",
       "atlasIndex": null,
-      "description": "Tài khoản chế độ Chiến Dịch dành cho người muốn trải nghiệm kho và tiến trình có sẵn."
+      "description": "Tài khoản chế độ Chiến Dịch dành cho người muốn trải nghiệm kho và tiến trình có sẵn.",
+      "detailImages": []
     },
     {
       "id": "OP-002",
@@ -143,7 +146,8 @@ window.DELTA_CATALOG = {
       "spec": "Hỏi shop · Nhận ảnh kho trước khi chốt",
       "image": "https://web.df.garena.com/02_h5/240923_official_website/vi/pc/gamemode_list_03.jpg",
       "atlasIndex": null,
-      "description": "Gói acc OP có kho và tiến trình cao hơn. Liên hệ để nhận ảnh kho trước khi chốt."
+      "description": "Gói acc OP có kho và tiến trình cao hơn. Liên hệ để nhận ảnh kho trước khi chốt.",
+      "detailImages": []
     },
     {
       "id": "XU-020",
@@ -153,7 +157,8 @@ window.DELTA_CATALOG = {
       "spec": "Còn hàng · Mốc 20M",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp",
       "atlasIndex": null,
-      "description": "Acc có mốc 20M xu tươi. Mốc xu và giá sẽ được xác nhận lại theo kho thực tế."
+      "description": "Acc có mốc 20M xu tươi. Mốc xu và giá sẽ được xác nhận lại theo kho thực tế.",
+      "detailImages": []
     },
     {
       "id": "XU-050",
@@ -163,7 +168,8 @@ window.DELTA_CATALOG = {
       "spec": "Còn hàng · Mốc 50M",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-box-3x3-4.webp",
       "atlasIndex": null,
-      "description": "Gói acc 50M xu tươi dành cho người cần vốn xu lớn để triển khai kho."
+      "description": "Gói acc 50M xu tươi dành cho người cần vốn xu lớn để triển khai kho.",
+      "detailImages": []
     },
     {
       "id": "XU-100",
@@ -173,7 +179,8 @@ window.DELTA_CATALOG = {
       "spec": "Hỏi shop · Mốc 100M",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-full-phong-ban-can-cu-ngam-9-scaled.webp",
       "atlasIndex": null,
-      "description": "Gói acc mốc 100M xu tươi. Liên hệ trực tiếp để nhận ảnh kho và báo giá theo tình trạng."
+      "description": "Gói acc mốc 100M xu tươi. Liên hệ trực tiếp để nhận ảnh kho và báo giá theo tình trạng.",
+      "detailImages": []
     },
     {
       "id": "SV-001",
@@ -183,7 +190,8 @@ window.DELTA_CATALOG = {
       "spec": "10k / 1M",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp",
       "atlasIndex": null,
-      "description": "Gói thường 10k/1M · trên 20M còn 9k/1M. Siêu nhanh 12k/1M · trên 10M còn 11k/1M."
+      "description": "Gói thường 10k/1M · trên 20M còn 9k/1M. Siêu nhanh 12k/1M · trên 10M còn 11k/1M.",
+      "detailImages": []
     },
     {
       "id": "SV-002",
@@ -193,7 +201,8 @@ window.DELTA_CATALOG = {
       "spec": "8k / 1M",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-box-3x3-4.webp",
       "atlasIndex": null,
-      "description": "Tính theo lịch sử đấu. Shop kiểm tra mục tiêu và phạm vi trước khi nhận."
+      "description": "Tính theo lịch sử đấu. Shop kiểm tra mục tiêu và phạm vi trước khi nhận.",
+      "detailImages": []
     },
     {
       "id": "SV-003",
@@ -203,7 +212,8 @@ window.DELTA_CATALOG = {
       "spec": "130 / 1h · 150 / 1g",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-full-phong-ban-can-cu-ngam-9-scaled.webp",
       "atlasIndex": null,
-      "description": "130/1h · 150/1g, bù khi gãy. Thuê trên 2g được tặng thêm 1 trận."
+      "description": "130/1h · 150/1g, bù khi gãy. Thuê trên 2g được tặng thêm 1 trận.",
+      "detailImages": []
     },
     {
       "id": "SV-004",
@@ -213,7 +223,8 @@ window.DELTA_CATALOG = {
       "spec": "180 / 1h · 200 / 1g",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/09/phi-thang-thuong-da-sac-5.webp",
       "atlasIndex": null,
-      "description": "180/1h · 200/1g, bù khi gãy. Trao đổi rõ map và thời gian trước khi nhận."
+      "description": "180/1h · 200/1g, bù khi gãy. Trao đổi rõ map và thời gian trước khi nhận.",
+      "detailImages": []
     },
     {
       "id": "SV-005",
@@ -223,7 +234,8 @@ window.DELTA_CATALOG = {
       "spec": "Giá nhắn riêng",
       "image": "https://deltaforce.skin/wp-content/uploads/2026/04/vat-pham-gioi-han-binh-xang-luc-day-7.webp",
       "atlasIndex": null,
-      "description": "Làm trong ngày. Giá nhắn riêng sau khi shop kiểm tra yêu cầu. Cam kết không tu tiên."
+      "description": "Làm trong ngày. Giá nhắn riêng sau khi shop kiểm tra yêu cầu. Cam kết không tu tiên.",
+      "detailImages": []
     }
   ],
   "rewards": [

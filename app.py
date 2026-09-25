@@ -31,7 +31,7 @@ PUBLIC_ROOT = ROOT / 'public' if (ROOT / 'public').is_dir() else ROOT
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS admin (id INTEGER PRIMARY KEY CHECK(id=1), password_hash TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, detail_images TEXT NOT NULL DEFAULT '[]');
 CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), item TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount>0), status TEXT NOT NULL DEFAULT 'pending', points INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS rewards (id TEXT PRIMARY KEY, name TEXT NOT NULL, cost INTEGER NOT NULL CHECK(cost>0), active INTEGER NOT NULL DEFAULT 1);
@@ -89,6 +89,7 @@ def request_id(value):
 
 # Additive migrations: old orders and spent points retain their original meaning.
 UPGRADE_COLUMNS = {
+    'products': {'detail_images': "TEXT NOT NULL DEFAULT '[]'"},
     'rewards': {'kind': "TEXT NOT NULL DEFAULT 'model'", 'description': "TEXT NOT NULL DEFAULT ''",
         'terms': "TEXT NOT NULL DEFAULT ''", 'product_id': "TEXT NOT NULL DEFAULT ''",
         'stock': 'INTEGER NOT NULL DEFAULT -1', 'per_customer_limit': 'INTEGER NOT NULL DEFAULT 0',
@@ -154,7 +155,7 @@ def migrate_delta_storefront(db):
         db.execute('UPDATE settings SET value=? WHERE id=1', (json.dumps(fresh, ensure_ascii=False),))
         db.execute('DELETE FROM products')
         for item in seed['products']:
-            db.execute('INSERT INTO products VALUES(?,?,?,?,?,?,?,?,1)',
+            db.execute('INSERT INTO products(id,name,category,price,spec,image,atlas_index,description,active) VALUES(?,?,?,?,?,?,?,?,1)',
                        (item['id'], item['name'], item['category'], item['price'], item['spec'], item['image'], item.get('atlasIndex'), item['description']))
         # Retire the bundled MORI reward catalog too. Referenced historical
         # rewards are retained but hidden so old customer history stays valid.
@@ -268,7 +269,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
             seed = json.loads((ROOT / 'catalog.json').read_text(encoding='utf-8'))
             db.execute('INSERT INTO settings VALUES(1,?)', (json.dumps(seed['settings'], ensure_ascii=False),))
             for p in seed['products']:
-                db.execute('INSERT INTO products VALUES(?,?,?,?,?,?,?,?,1)', (p['id'],p['name'],p['category'],p['price'],p['spec'],p['image'],p.get('atlasIndex'),p['description']))
+                db.execute('INSERT INTO products(id,name,category,price,spec,image,atlas_index,description,active) VALUES(?,?,?,?,?,?,?,?,1)', (p['id'],p['name'],p['category'],p['price'],p['spec'],p['image'],p.get('atlasIndex'),p['description']))
             for r in seed['rewards']:
                 db.execute('INSERT INTO rewards(id,name,cost) VALUES(?,?,?)',(r['id'],r['name'],r['cost']))
                 for key in UPGRADE_COLUMNS['rewards']:
@@ -323,6 +324,12 @@ def create_app(data_dir=None, images_dir=None, testing=False):
     def product_dict(row):
         p = dict(row)
         p['atlasIndex'] = p.pop('atlas_index')
+        raw = p.pop('detail_images', '[]')
+        try:
+            detail = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, json.JSONDecodeError):
+            detail = []
+        p['detailImages'] = [str(item).strip() for item in detail if isinstance(item, str) and str(item).strip()][:20] if isinstance(detail, list) else []
         return p
 
     def store_data(db):
@@ -653,6 +660,16 @@ def create_app(data_dir=None, images_dir=None, testing=False):
             db.execute('UPDATE settings SET value=? WHERE id=1',(json.dumps(value,ensure_ascii=False),))
         return jsonify(ok=True)
 
+    def validated_product_image(value, label='Ảnh sản phẩm'):
+        image=clean_text(value,label,1000)
+        if re.fullmatch(r'https://[^\s]+', image, flags=re.I):
+            return image
+        if re.fullmatch(r'images/[a-f0-9]{32}\.webp', image):
+            if not (pictures/Path(image).name).is_file():
+                raise APIError(f'{label} tải lên chưa tồn tại. Hãy tải lại ảnh.')
+            return image
+        raise APIError(f'{label} phải là link HTTPS hoặc ảnh được tải lên từ trang quản trị.')
+
     @app.post('/api/admin/products')
     def save_product():
         d=body()
@@ -664,27 +681,27 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         price=integer(d.get('price'),'Giá bán')
         spec=clean_text(d.get('spec',''),'Thông số',150,False)
         description=clean_text(d.get('description',''),'Mô tả',2000,False)
-        atlas=d.get('atlasIndex')
-        image=clean_text(d.get('image',''),'Đường dẫn ảnh',1000)
-        if re.fullmatch(r'https://[^\s]+', image, flags=re.I):
-            atlas=None
-        elif re.fullmatch(r'images/[a-f0-9]{32}\.webp', image):
-            atlas=None
-            if not (pictures/Path(image).name).is_file():
-                raise APIError('Ảnh tải lên chưa tồn tại. Hãy tải lại ảnh.')
-        elif atlas is not None and image in ('images/models.png','images/prints.png'):
-            atlas=integer(atlas,'Ô ảnh',0,5)
-            if not (pictures/Path(image).name).is_file():
-                raise APIError('Ảnh mẫu chưa tồn tại.')
-        else:
-            raise APIError('Ảnh phải là link HTTPS hoặc ảnh được tải lên từ trang quản trị.')
+        atlas=None
+        image=validated_product_image(d.get('image',''),'Ảnh đại diện')
+        detail_input=d.get('detailImages',[])
+        if not isinstance(detail_input,list):
+            raise APIError('Danh sách ảnh chi tiết không hợp lệ.')
+        if len(detail_input)>20:
+            raise APIError('Mỗi acc chỉ được tối đa 20 ảnh chi tiết.')
+        detail_images=[]
+        seen={image}
+        for index,item in enumerate(detail_input,1):
+            detail=validated_product_image(item,f'Ảnh chi tiết #{index}')
+            if detail not in seen:
+                seen.add(detail)
+                detail_images.append(detail)
         active=integer(d.get('active',1),'Trạng thái',0,1)
         with database(True) as db:
             allowed={c['id'] for c in settings(db).get('categories',[]) if isinstance(c,dict) and c.get('id')}
             if category not in allowed:
                 raise APIError('Danh mục không hợp lệ hoặc đã bị xóa.')
-            db.execute('INSERT INTO products VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,price=excluded.price,spec=excluded.spec,image=excluded.image,atlas_index=excluded.atlas_index,description=excluded.description,active=excluded.active',
-                       (pid,name,category,price,spec,image,atlas,description,active))
+            db.execute('INSERT INTO products(id,name,category,price,spec,image,atlas_index,description,active,detail_images) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,price=excluded.price,spec=excluded.spec,image=excluded.image,atlas_index=excluded.atlas_index,description=excluded.description,active=excluded.active,detail_images=excluded.detail_images',
+                       (pid,name,category,price,spec,image,atlas,description,active,json.dumps(detail_images,ensure_ascii=False)))
         return jsonify(ok=True)
 
     @app.delete('/api/admin/products/<pid>')
@@ -973,6 +990,8 @@ def create_app(data_dir=None, images_dir=None, testing=False):
                     z.write(asset,'assets/'+asset.relative_to(PUBLIC_ROOT/'assets').as_posix())
             z.writestr('catalog.js','window.DELTA_CATALOG = '+json.dumps(data,ensure_ascii=False,indent=2)+';\n')
             paths={Path(p['image']).name for p in data['products']} | {'models.png','prints.png'}
+            for product in data['products']:
+                paths.update(Path(image).name for image in product.get('detailImages',[]) if isinstance(image,str))
             gift_image=str(data['settings'].get('giftHeroImage',''))
             if re.fullmatch(r'images/[a-f0-9]{32}\.webp',gift_image):
                 paths.add(Path(gift_image).name)
