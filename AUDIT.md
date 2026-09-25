@@ -1,20 +1,12 @@
-# Audit v26
+# Audit V28
 
-## Giữ lại trong `public/`
-Các trang đang dùng: `index.html`, `kho-acc.html`, `dich-vu.html`, `giftcode.html`, `tin-tuc.html`, cùng `catalog.js`, favicon và asset CSS/JS/ảnh cần thiết.
-
-## Không đưa vào bản Cloudflare public
-- Backend/local admin: `app.py`, `admin.html`, `restore_backup.py`, `requirements.txt`, các file `.bat/.sh`.
-- Dữ liệu runtime: SQLite/session key trong `data/` (không được commit lên GitHub).
-- Ảnh atlas cũ `images/models.png`, `images/prints.png`: catalogue hiện tại không sử dụng trong bản static.
-
-## Các file legacy/trùng đã loại
-- `products.html`, `market.html` -> `kho-acc.html`
-- `printing.html`, `custom.html` -> `dich-vu.html`
-- `rewards.html` -> `giftcode.html`
-- `community.html` -> `tin-tuc.html`
-
-Cloudflare `_redirects` giữ các URL cũ hoạt động.
-
-## Kiểm tra
-Các trang và asset chính đã được chạy bằng HTTP local và trả mã 200.
+- PostgreSQL support qua `DATABASE_URL`, SQLite vẫn dùng được local.
+- SQL adapter giữ nguyên API/query hiện có và tương thích bind parameters PostgreSQL.
+- PostgreSQL schema có đầy đủ bảng/column V27 và thứ tự record riêng cho các danh sách admin.
+- R2 upload dùng S3-compatible API bằng boto3.
+- Cloudflare Pages `/images/*` ưu tiên đọc trực tiếp R2 binding `MEDIA`, fallback Render.
+- Ảnh vẫn lưu reference `images/<uuid>.webp`, không phá dữ liệu frontend/admin hiện tại.
+- Backup PostgreSQL xuất `database.json`; backup SQLite vẫn xuất `database.sqlite3`.
+- Có script di chuyển backup V27 SQLite + images sang PostgreSQL + R2.
+- Python syntax: checked.
+- Pages Functions JS syntax: checked.

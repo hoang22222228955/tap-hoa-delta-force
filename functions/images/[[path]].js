@@ -3,13 +3,32 @@ function backendOrigin(env) {
   return /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(value) ? value : '';
 }
 
-export async function onRequest(context) {
-  const backend = backendOrigin(context.env);
-  if (!backend) return context.env.ASSETS.fetch(context.request);
+function safeImageKey(parts) {
+  const suffix = parts.map(String).join('/');
+  return /^[a-f0-9]{32}\.webp$/i.test(suffix) ? suffix : '';
+}
 
+export async function onRequest(context) {
   const parts = Array.isArray(context.params.path)
     ? context.params.path
     : [context.params.path].filter(Boolean);
+
+  const key = safeImageKey(parts);
+  if (key && context.env.MEDIA) {
+    const object = await context.env.MEDIA.get(key);
+    if (object) {
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set('Content-Type', 'image/webp');
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      headers.set('ETag', object.httpEtag);
+      return new Response(object.body, { headers });
+    }
+  }
+
+  const backend = backendOrigin(context.env);
+  if (!backend) return context.env.ASSETS.fetch(context.request);
+
   const suffix = parts.map(encodeURIComponent).join('/');
   const incoming = new URL(context.request.url);
   const target = new URL(`${backend}/images/${suffix}`);

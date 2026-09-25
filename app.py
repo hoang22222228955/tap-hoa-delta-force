@@ -1,4 +1,4 @@
-"""Tạp Hóa Delta Force — Flask + SQLite. Run: python app.py (Python 3.11+)."""
+"""Tạp Hóa Delta Force — Flask + PostgreSQL/R2 (SQLite/local fallback)."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import sqlite3
+from collections.abc import Mapping
 import threading
 import tempfile
 import time
@@ -21,10 +22,26 @@ from functools import wraps
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from flask import Flask, jsonify, request, send_file, send_from_directory, session
+from flask import Flask, jsonify, request, send_file, send_from_directory, session, redirect
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
+
+
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+except ImportError:  # local-only mode can still run without R2 dependencies
+    boto3 = None
+    ClientError = Exception
+
+try:
+    import psycopg
+    from psycopg import Error as PsycopgError
+except ImportError:  # SQLite fallback for local/offline use
+    psycopg = None
+    class PsycopgError(Exception):
+        pass
 
 ROOT = Path(__file__).resolve().parent
 PUBLIC_ROOT = ROOT / 'public' if (ROOT / 'public').is_dir() else ROOT
@@ -40,6 +57,199 @@ CREATE INDEX IF NOT EXISTS orders_phone ON orders(phone,status);
 CREATE INDEX IF NOT EXISTS redemptions_phone ON redemptions(phone,status);
 CREATE TABLE IF NOT EXISTS login_attempts (address TEXT NOT NULL, attempted REAL NOT NULL);
 """
+
+POSTGRES_SCHEMA = r"""
+CREATE TABLE IF NOT EXISTS admin (id INTEGER PRIMARY KEY CHECK(id=1), password_hash TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS products (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0),
+  spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+  detail_images TEXT NOT NULL DEFAULT '[]', created_seq BIGSERIAL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', created_seq BIGSERIAL UNIQUE);
+CREATE TABLE IF NOT EXISTS orders (
+  id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), item TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount>0),
+  status TEXT NOT NULL DEFAULT 'pending', points INTEGER NOT NULL DEFAULT 0,
+  created TEXT NOT NULL DEFAULT (to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS')),
+  discount INTEGER NOT NULL DEFAULT 0, redemption_id TEXT, voucher_code TEXT NOT NULL DEFAULT '', tech TEXT NOT NULL DEFAULT '',
+  production_stage TEXT NOT NULL DEFAULT 'new', due_date TEXT NOT NULL DEFAULT '', internal_note TEXT NOT NULL DEFAULT '',
+  created_seq BIGSERIAL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS rewards (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, cost INTEGER NOT NULL CHECK(cost>0), active INTEGER NOT NULL DEFAULT 1,
+  kind TEXT NOT NULL DEFAULT 'model', description TEXT NOT NULL DEFAULT '', terms TEXT NOT NULL DEFAULT '', product_id TEXT NOT NULL DEFAULT '',
+  stock INTEGER NOT NULL DEFAULT -1, per_customer_limit INTEGER NOT NULL DEFAULT 0, valid_days INTEGER NOT NULL DEFAULT 0,
+  value_amount INTEGER NOT NULL DEFAULT 0, min_order INTEGER NOT NULL DEFAULT 0, start_date TEXT NOT NULL DEFAULT '', end_date TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS redemptions (
+  id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), reward_id TEXT NOT NULL REFERENCES rewards(id), reward_name TEXT NOT NULL,
+  cost INTEGER NOT NULL CHECK(cost>0), status TEXT NOT NULL DEFAULT 'done',
+  created TEXT NOT NULL DEFAULT (to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS')),
+  snapshot TEXT NOT NULL DEFAULT '{}', code TEXT, expires_at TEXT NOT NULL DEFAULT '', stock_reserved INTEGER NOT NULL DEFAULT 0, order_id TEXT,
+  created_seq BIGSERIAL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS point_adjustments (
+  id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), delta INTEGER NOT NULL CHECK(delta<>0), reason TEXT NOT NULL,
+  created TEXT NOT NULL DEFAULT (to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS')), created_seq BIGSERIAL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS login_attempts (address TEXT NOT NULL, attempted DOUBLE PRECISION NOT NULL);
+CREATE INDEX IF NOT EXISTS orders_phone ON orders(phone,status);
+CREATE INDEX IF NOT EXISTS redemptions_phone ON redemptions(phone,status);
+CREATE UNIQUE INDEX IF NOT EXISTS redemption_code ON redemptions(code) WHERE code IS NOT NULL;
+"""
+
+
+class HybridRow(Mapping):
+    """Mapping row that also supports SQLite-style integer indexing."""
+    def __init__(self, keys, values):
+        self._keys = tuple(keys)
+        self._values = tuple(values)
+        self._data = dict(zip(self._keys, self._values))
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return self._data[key]
+
+    def __iter__(self):
+        return iter(self._keys)
+
+    def __len__(self):
+        return len(self._keys)
+
+
+class CursorAdapter:
+    def __init__(self, cursor, backend):
+        self.cursor = cursor
+        self.backend = backend
+        self._keys = [d.name if hasattr(d, 'name') else d[0] for d in (cursor.description or [])]
+
+    def _row(self, row):
+        if row is None or self.backend == 'sqlite':
+            return row
+        return HybridRow(self._keys, row)
+
+    def fetchone(self):
+        return self._row(self.cursor.fetchone())
+
+    def fetchall(self):
+        return [self._row(r) for r in self.cursor.fetchall()]
+
+    def __iter__(self):
+        for row in self.cursor:
+            yield self._row(row)
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
+
+class DBAdapter:
+    def __init__(self, connection, backend):
+        self.connection = connection
+        self.backend = backend
+
+    @staticmethod
+    def _sql(query):
+        # Project queries only use ? as bind placeholders, not as literal text.
+        return query.replace('?', '%s')
+
+    def execute(self, query, params=()):
+        if self.backend == 'sqlite':
+            return CursorAdapter(self.connection.execute(query, params), 'sqlite')
+        cur = self.connection.cursor()
+        cur.execute(self._sql(query), params)
+        return CursorAdapter(cur, 'postgres')
+
+    def executescript(self, script):
+        if self.backend == 'sqlite':
+            self.connection.executescript(script)
+            return
+        for statement in script.split(';'):
+            statement = statement.strip()
+            if statement:
+                self.execute(statement)
+
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def close(self):
+        self.connection.close()
+
+
+class LocalImageStore:
+    def __init__(self, root):
+        self.root = Path(root)
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.kind = 'local'
+
+    def exists(self, filename):
+        return (self.root / filename).is_file()
+
+    def put(self, filename, payload):
+        (self.root / filename).write_bytes(payload)
+
+    def get(self, filename):
+        path = self.root / filename
+        return path.read_bytes() if path.is_file() else None
+
+    def names(self):
+        return sorted(p.name for p in self.root.glob('*.webp') if p.is_file())
+
+
+class R2ImageStore:
+    def __init__(self, account_id, bucket, access_key, secret_key):
+        if boto3 is None:
+            raise RuntimeError('Thiếu boto3. Hãy cài dependencies từ requirements.txt.')
+        endpoint = f'https://{account_id}.r2.cloudflarestorage.com'
+        self.client = boto3.client(
+            's3', endpoint_url=endpoint, region_name='auto',
+            aws_access_key_id=access_key, aws_secret_access_key=secret_key
+        )
+        self.bucket = bucket
+        self.kind = 'r2'
+
+    def exists(self, filename):
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=filename)
+            return True
+        except ClientError as exc:
+            code = str(exc.response.get('Error', {}).get('Code', '')) if hasattr(exc, 'response') else ''
+            if code in ('404', 'NoSuchKey', 'NotFound'):
+                return False
+            raise
+
+    def put(self, filename, payload):
+        self.client.put_object(
+            Bucket=self.bucket, Key=filename, Body=payload, ContentType='image/webp',
+            CacheControl='public, max-age=31536000, immutable'
+        )
+
+    def get(self, filename):
+        try:
+            obj = self.client.get_object(Bucket=self.bucket, Key=filename)
+            return obj['Body'].read()
+        except ClientError as exc:
+            code = str(exc.response.get('Error', {}).get('Code', '')) if hasattr(exc, 'response') else ''
+            if code in ('404', 'NoSuchKey', 'NotFound'):
+                return None
+            raise
+
+    def names(self):
+        result, token = [], None
+        while True:
+            kwargs = {'Bucket': self.bucket, 'MaxKeys': 1000}
+            if token:
+                kwargs['ContinuationToken'] = token
+            page = self.client.list_objects_v2(**kwargs)
+            result.extend(x['Key'] for x in page.get('Contents', []) if str(x.get('Key', '')).endswith('.webp'))
+            if not page.get('IsTruncated'):
+                break
+            token = page.get('NextContinuationToken')
+        return sorted(result)
 
 
 class APIError(Exception):
@@ -111,13 +321,25 @@ PRODUCTION_STAGES = {
 
 def migrate_v5(db):
     for table, columns in UPGRADE_COLUMNS.items():
-        existing = {r[1] for r in db.execute('PRAGMA table_info(' + table + ')')}
+        if db.backend == 'postgres':
+            existing = {r[0] for r in db.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=?",
+                (table,)
+            )}
+        else:
+            existing = {r[1] for r in db.execute('PRAGMA table_info(' + table + ')')}
         for name, spec in columns.items():
             if name not in existing:
                 db.execute(f'ALTER TABLE {table} ADD COLUMN {name} {spec}')
     db.execute('CREATE UNIQUE INDEX IF NOT EXISTS redemption_code ON redemptions(code) WHERE code IS NOT NULL')
-    db.execute("CREATE TABLE IF NOT EXISTS point_adjustments(id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), delta INTEGER NOT NULL CHECK(delta<>0), reason TEXT NOT NULL, created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
-    db.execute('PRAGMA user_version=5')
+    if db.backend == 'postgres':
+        db.execute("CREATE TABLE IF NOT EXISTS point_adjustments(id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), delta INTEGER NOT NULL CHECK(delta<>0), reason TEXT NOT NULL, created TEXT NOT NULL DEFAULT (to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS')), created_seq BIGSERIAL UNIQUE)")
+        for table in ('products','customers','orders','redemptions','point_adjustments'):
+            db.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS created_seq BIGSERIAL')
+            db.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS {table}_created_seq_unique ON {table}(created_seq)')
+    else:
+        db.execute("CREATE TABLE IF NOT EXISTS point_adjustments(id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), delta INTEGER NOT NULL CHECK(delta<>0), reason TEXT NOT NULL, created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+        db.execute('PRAGMA user_version=5')
 
 
 def migrate_delta_storefront(db):
@@ -225,6 +447,26 @@ def create_app(data_dir=None, images_dir=None, testing=False):
     pictures.mkdir(parents=True, exist_ok=True)
     dbpath = storage / 'shop.sqlite3'
     keypath = storage / 'session.key'
+
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    use_postgres = database_url.startswith(('postgres://', 'postgresql://'))
+    if use_postgres and psycopg is None:
+        raise RuntimeError('DATABASE_URL đã được cấu hình nhưng thiếu psycopg. Hãy cài requirements.txt mới.')
+
+    r2_values = {
+        'account': os.environ.get('R2_ACCOUNT_ID', '').strip(),
+        'bucket': os.environ.get('R2_BUCKET', '').strip(),
+        'access': os.environ.get('R2_ACCESS_KEY_ID', '').strip(),
+        'secret': os.environ.get('R2_SECRET_ACCESS_KEY', '').strip(),
+    }
+    if any(r2_values.values()) and not all(r2_values.values()):
+        missing = ', '.join(k for k, v in r2_values.items() if not v)
+        raise RuntimeError('Cấu hình R2 chưa đủ. Thiếu: ' + missing)
+    image_store = (
+        R2ImageStore(r2_values['account'], r2_values['bucket'], r2_values['access'], r2_values['secret'])
+        if all(r2_values.values()) else LocalImageStore(pictures)
+    )
+
     configured_secret = os.environ.get('SHOP_SECRET_KEY', '').strip()
     if configured_secret:
         secret_key = configured_secret
@@ -242,14 +484,22 @@ def create_app(data_dir=None, images_dir=None, testing=False):
                       SESSION_COOKIE_SECURE=os.environ.get('SHOP_HTTPS') == '1',
                       PERMANENT_SESSION_LIFETIME=timedelta(hours=8), MAX_CONTENT_LENGTH=8*1024*1024)
     app.config['DB_PATH'], app.config['IMAGES_PATH'] = dbpath, pictures
+    app.config['DB_BACKEND'] = 'postgres' if use_postgres else 'sqlite'
+    app.config['IMAGE_BACKEND'] = image_store.kind
+    app.image_store = image_store
 
     @contextmanager
     def database(write=False):
-        db = sqlite3.connect(dbpath, timeout=15)
-        db.row_factory = sqlite3.Row
-        db.execute('PRAGMA foreign_keys=ON')
+        if use_postgres:
+            raw = psycopg.connect(database_url, connect_timeout=10)
+            db = DBAdapter(raw, 'postgres')
+        else:
+            raw = sqlite3.connect(dbpath, timeout=15)
+            raw.row_factory = sqlite3.Row
+            raw.execute('PRAGMA foreign_keys=ON')
+            db = DBAdapter(raw, 'sqlite')
         try:
-            if write:
+            if write and db.backend == 'sqlite':
                 db.execute('BEGIN IMMEDIATE')
             yield db
             db.commit()
@@ -261,8 +511,11 @@ def create_app(data_dir=None, images_dir=None, testing=False):
 
     app.database = database
     with database() as db:
-        db.execute('PRAGMA journal_mode=WAL')
-        db.executescript(SCHEMA)
+        if db.backend == 'sqlite':
+            db.execute('PRAGMA journal_mode=WAL')
+            db.executescript(SCHEMA)
+        else:
+            db.executescript(POSTGRES_SCHEMA)
     with database(True) as db:
         migrate_v5(db)
         if not db.execute('SELECT 1 FROM settings').fetchone():
@@ -277,8 +530,6 @@ def create_app(data_dir=None, images_dir=None, testing=False):
                         db.execute(f'UPDATE rewards SET {key}=? WHERE id=?',(r[key],r['id']))
         migrate_delta_storefront(db)
         # 4.2 migration: the previous bundled default was 4.2 seconds.
-        # Move that legacy default to 2.5 seconds so an existing data folder
-        # does not keep the old slideshow speed after upgrading.
         row = db.execute('SELECT value FROM settings WHERE id=1').fetchone()
         if row:
             current = json.loads(row[0])
@@ -324,6 +575,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
     def product_dict(row):
         p = dict(row)
         p['atlasIndex'] = p.pop('atlas_index')
+        p.pop('created_seq', None)
         raw = p.pop('detail_images', '[]')
         try:
             detail = json.loads(raw) if isinstance(raw, str) else raw
@@ -333,7 +585,8 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         return p
 
     def store_data(db):
-        return {'settings': settings(db), 'products': [product_dict(p) for p in db.execute('SELECT * FROM products WHERE active=1 ORDER BY rowid')],
+        order_col = 'created_seq' if db.backend == 'postgres' else 'rowid'
+        return {'settings': settings(db), 'products': [product_dict(p) for p in db.execute(f'SELECT * FROM products WHERE active=1 ORDER BY {order_col}')],
                 'rewards': [dict(r) | {'available':reward_available(r)} for r in db.execute('SELECT * FROM rewards WHERE active=1 ORDER BY cost')]}
 
     def balance(db, phone):
@@ -389,6 +642,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         return err
 
     @app.errorhandler(sqlite3.Error)
+    @app.errorhandler(PsycopgError)
     def db_error(err):
         app.logger.exception('Database error')
         return jsonify(error='Chưa lưu được dữ liệu. Vui lòng thử lại, giữ nguyên biểu mẫu để tránh tạo đơn trùng.'),503
@@ -443,7 +697,21 @@ def create_app(data_dir=None, images_dir=None, testing=False):
     def images(filename):
         if not re.fullmatch(r'(?:(?:models|prints)\.png|[a-f0-9]{32}\.webp)', filename):
             raise APIError('Không tìm thấy ảnh.',404)
-        return send_from_directory(pictures,filename,max_age=86400)
+        if filename in ('models.png', 'prints.png'):
+            path = pictures / filename
+            if path.is_file():
+                return send_from_directory(pictures, filename, max_age=86400)
+            raise APIError('Không tìm thấy ảnh.',404)
+        try:
+            payload = image_store.get(filename)
+        except Exception:
+            app.logger.exception('R2 image read failed')
+            raise APIError('Kho ảnh đang tạm thời không phản hồi.',503)
+        if payload is None:
+            raise APIError('Không tìm thấy ảnh.',404)
+        response = send_file(io.BytesIO(payload), mimetype='image/webp', max_age=31536000)
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        return response
 
     @app.get('/assets/<path:filename>')
     def assets(filename):
@@ -458,7 +726,9 @@ def create_app(data_dir=None, images_dir=None, testing=False):
 
     @app.get('/healthz')
     def healthz():
-        return jsonify(ok=True)
+        with database() as db:
+            db.execute('SELECT 1').fetchone()
+        return jsonify(ok=True,database=app.config['DB_BACKEND'],images=app.config['IMAGE_BACKEND'])
 
     @app.get('/api/session')
     def current_session():
@@ -499,11 +769,12 @@ def create_app(data_dir=None, images_dir=None, testing=False):
     def admin_data():
         with database() as db:
             data=store_data(db)
-            data['products']=[product_dict(p) for p in db.execute('SELECT * FROM products ORDER BY rowid DESC')]
+            order_col = 'created_seq' if db.backend == 'postgres' else 'rowid'
+            data['products']=[product_dict(p) for p in db.execute(f'SELECT * FROM products ORDER BY {order_col} DESC')]
             data['rewards']=[dict(r) | {'available':reward_available(r)} for r in db.execute('SELECT * FROM rewards ORDER BY cost')]
-            data['customers']=[dict(r)|{'balance':balance(db,r['phone'])} for r in db.execute('SELECT * FROM customers ORDER BY rowid DESC')]
-            data['orders']=[dict(r) for r in db.execute('SELECT o.*,c.name FROM orders o JOIN customers c ON c.phone=o.phone ORDER BY o.rowid DESC LIMIT 200')]
-            data['redemptions']=[dict(r) for r in db.execute('SELECT * FROM redemptions ORDER BY rowid DESC LIMIT 200')]
+            data['customers']=[dict(r)|{'balance':balance(db,r['phone'])} for r in db.execute(f'SELECT * FROM customers ORDER BY {order_col} DESC')]
+            data['orders']=[dict(r) for r in db.execute(f'SELECT o.*,c.name FROM orders o JOIN customers c ON c.phone=o.phone ORDER BY o.{order_col} DESC LIMIT 200')]
+            data['redemptions']=[dict(r) for r in db.execute(f'SELECT * FROM redemptions ORDER BY {order_col} DESC LIMIT 200')]
             production={stage:db.execute('SELECT COUNT(*) FROM orders WHERE production_stage=? AND status NOT IN (\'cancelled\',\'refunded\')',(stage,)).fetchone()[0] for stage in PRODUCTION_STAGES}
             data['stats']={
                 'revenue':db.execute("SELECT COALESCE(SUM(amount-discount),0) FROM orders WHERE status='completed'").fetchone()[0],
@@ -516,8 +787,13 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         image=clean_text(value,'Ảnh minh họa giftcode',1000,False)
         if image and not (re.fullmatch(r'https://[^\s]+',image,re.I) or re.fullmatch(r'images/[a-f0-9]{32}\.webp',image)):
             raise APIError('Ảnh giftcode phải là link HTTPS hoặc ảnh được tải lên từ trang quản trị.')
-        if re.fullmatch(r'images/[a-f0-9]{32}\.webp',image) and not (pictures/Path(image).name).is_file():
-            raise APIError('Ảnh giftcode tải lên chưa tồn tại. Hãy tải lại ảnh.')
+        if re.fullmatch(r'images/[a-f0-9]{32}\.webp',image):
+            try:
+                exists=image_store.exists(Path(image).name)
+            except Exception:
+                raise APIError('Chưa kiểm tra được ảnh trên R2. Hãy thử lại.',503)
+            if not exists:
+                raise APIError('Ảnh giftcode tải lên chưa tồn tại. Hãy tải lại ảnh.')
         return image
 
     def validated_gift_video(value):
@@ -665,7 +941,11 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         if re.fullmatch(r'https://[^\s]+', image, flags=re.I):
             return image
         if re.fullmatch(r'images/[a-f0-9]{32}\.webp', image):
-            if not (pictures/Path(image).name).is_file():
+            try:
+                exists=image_store.exists(Path(image).name)
+            except Exception:
+                raise APIError('Chưa kiểm tra được ảnh trên R2. Hãy thử lại.',503)
+            if not exists:
                 raise APIError(f'{label} tải lên chưa tồn tại. Hãy tải lại ảnh.')
             return image
         raise APIError(f'{label} phải là link HTTPS hoặc ảnh được tải lên từ trang quản trị.')
@@ -733,10 +1013,15 @@ def create_app(data_dir=None, images_dir=None, testing=False):
             image=ImageOps.exif_transpose(image).convert('RGBA')
             image.thumbnail((1600,1600))
             filename=uuid.uuid4().hex+'.webp'
-            image.save(pictures/filename,'WEBP',quality=90)
+            output=io.BytesIO()
+            image.save(output,'WEBP',quality=90,method=6)
+            image_store.put(filename,output.getvalue())
         except (UnidentifiedImageError,OSError,Image.DecompressionBombError,ValueError):
             raise APIError('Không đọc được ảnh. Hãy chọn tệp PNG, JPEG hoặc WebP hợp lệ.')
-        return jsonify(image='images/'+filename,atlasIndex=None)
+        except Exception:
+            app.logger.exception('Image upload storage failed')
+            raise APIError('Chưa tải được ảnh lên kho R2. Vui lòng thử lại.',503)
+        return jsonify(image='images/'+filename,atlasIndex=None,storage=image_store.kind)
 
     @app.post('/api/admin/orders')
     def create_order():
@@ -946,11 +1231,11 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         phone=phone_number(phone)
         with database() as db:
             entries=[]
-            for r in db.execute('SELECT * FROM orders WHERE phone=? ORDER BY rowid DESC',(phone,)):
+            for r in db.execute(f"SELECT * FROM orders WHERE phone=? ORDER BY {'created_seq' if db.backend == 'postgres' else 'rowid'} DESC",(phone,)):
                 entries.append({'id':r['id'],'created':r['created'],'label':'Đơn: '+r['item'],'delta':r['points'] if r['status']=='completed' else 0,'status':r['status']})
-            for r in db.execute('SELECT * FROM redemptions WHERE phone=? ORDER BY rowid DESC',(phone,)):
+            for r in db.execute(f"SELECT * FROM redemptions WHERE phone=? ORDER BY {'created_seq' if db.backend == 'postgres' else 'rowid'} DESC",(phone,)):
                 entries.append({'id':r['id'],'created':r['created'],'label':'Đổi: '+r['reward_name'],'delta':-r['cost'] if r['status']!='cancelled' else 0,'status':r['status']})
-            for r in db.execute('SELECT * FROM point_adjustments WHERE phone=? ORDER BY rowid DESC',(phone,)):
+            for r in db.execute(f"SELECT * FROM point_adjustments WHERE phone=? ORDER BY {'created_seq' if db.backend == 'postgres' else 'rowid'} DESC",(phone,)):
                 entries.append({'id':r['id'],'created':r['created'],'label':r['reason'],'delta':r['delta'],'status':'adjusted'})
             return jsonify(phone=phone,balance=balance(db,phone),entries=sorted(entries,key=lambda x:x['created'],reverse=True))
 
@@ -996,27 +1281,51 @@ def create_app(data_dir=None, images_dir=None, testing=False):
             if re.fullmatch(r'images/[a-f0-9]{32}\.webp',gift_image):
                 paths.add(Path(gift_image).name)
             for name in sorted(paths):
-                if (pictures/name).is_file():
+                if name in ('models.png','prints.png') and (pictures/name).is_file():
                     z.write(pictures/name,'images/'+name)
+                    continue
+                if re.fullmatch(r'[a-f0-9]{32}\.webp',name):
+                    try:
+                        payload=image_store.get(name)
+                    except Exception:
+                        payload=None
+                    if payload is not None:
+                        z.writestr('images/'+name,payload)
             z.writestr('HUONG_DAN.txt','Giai nen toan bo thu muc roi mo index.html. Ban tinh nay chi chua gian hang, khong chua du lieu khach hang/quan tri. Khi thay doi san pham, xuat lai tu quan tri.\n')
         content.seek(0)
         return send_file(content,mimetype='application/zip',as_attachment=True,download_name='Tap_Hoa_Delta_Force_Gian_Hang_HTML.zip')
 
     @app.get('/api/admin/backup')
     def backup():
-        # SQLite backup API provides a consistent snapshot even while WAL is active.
         content=io.BytesIO()
         with zipfile.ZipFile(content,'w',zipfile.ZIP_DEFLATED) as z:
-            with tempfile.TemporaryDirectory() as folder:
-                path=Path(folder)/'database.sqlite3'
+            if app.config['DB_BACKEND']=='sqlite':
+                with tempfile.TemporaryDirectory() as folder:
+                    path=Path(folder)/'database.sqlite3'
+                    with database() as db:
+                        snapshot=sqlite3.connect(path)
+                        db.connection.backup(snapshot)
+                        snapshot.close()
+                    z.write(path,'database.sqlite3')
+            else:
+                tables=('admin','settings','products','customers','rewards','orders','redemptions','point_adjustments','login_attempts')
+                exported={}
                 with database() as db:
-                    snapshot=sqlite3.connect(path)
-                    db.backup(snapshot)
-                    snapshot.close()
-                z.write(path,'database.sqlite3')
-            for p in sorted(pictures.glob('*.webp')):
-                z.write(p,'images/'+p.name)
-            z.writestr('README.txt','Ban sao luu chua thong tin khach, don hang va mat khau da bam. Giu rieng. Phuc hoi: dung server, chay python restore_backup.py DUONG_DAN_ZIP.\n')
+                    for table in tables:
+                        exported[table]=[dict(r) for r in db.execute(f'SELECT * FROM {table}')]
+                z.writestr('database.json',json.dumps(exported,ensure_ascii=False,indent=2,default=str))
+            try:
+                names=image_store.names()
+            except Exception:
+                names=[]
+            for name in names:
+                try:
+                    payload=image_store.get(name)
+                except Exception:
+                    payload=None
+                if payload is not None:
+                    z.writestr('images/'+name,payload)
+            z.writestr('README.txt','Backup V28. PostgreSQL duoc xuat thanh database.json; SQLite cu van dung database.sqlite3. Anh upload nam trong thu muc images/. Giu file nay rieng tu vi co du lieu khach hang va password hash.\n')
         content.seek(0)
         return send_file(content,mimetype='application/zip',as_attachment=True,download_name='Tap_Hoa_Delta_Force_Backup_'+time.strftime('%Y%m%d_%H%M%S')+'.zip')
 

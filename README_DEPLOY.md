@@ -1,42 +1,30 @@
-# Tạp Hóa Delta Force — GitHub + Cloudflare Pages
+# Deploy V28
 
-## Cấu trúc
-- `public/`: website tĩnh được Cloudflare Pages deploy.
-- Không có `admin.html`, Flask, SQLite hoặc dữ liệu khách hàng trong gói public.
+Repo này chứa cả frontend Cloudflare và backend Flask Render.
 
 ## GitHub
-Tạo repository trống trên GitHub, ví dụ: `tap-hoa-delta-force`.
-Không tạo sẵn README/.gitignore/license nếu muốn dùng lệnh bên dưới nguyên xi.
 
-Trong PowerShell/CMD tại thư mục này:
-
-```bash
-git init -b main
+```powershell
 git add .
-git commit -m "auto version update"
-git remote add origin https://github.com/hoang22222228955/tap-hoa-delta-force.git
-git push -u origin main
-```
-
-Các lần sau:
-
-```bash
-git add .
-git commit -m "auto version update"
+git commit -m "upgrade postgres r2"
 git push
 ```
 
 ## Cloudflare Pages
-1. Cloudflare Dashboard -> Workers & Pages -> Create application -> Pages.
-2. Import an existing Git repository.
-3. Chọn repository `tap-hoa-delta-force`.
-4. Production branch: `main`.
-5. Build command: `exit 0`.
-6. Build output directory: `public`.
-7. Save and Deploy.
 
-Mỗi lần push lên nhánh `main`, Cloudflare Pages sẽ tự build/deploy lại.
+- Production branch: `main`
+- Framework preset: `None`
+- Build command: `exit 0`
+- Build output directory: `public`
+- Variable: `BACKEND_ORIGIN=https://tap-hoa-delta-force-api.onrender.com`
+- R2 binding: `MEDIA` → bucket `tap-hoa-delta-force-media`
 
-## Lưu ý về Admin
-Bản này là storefront tĩnh. `admin.html` của bản Flask cũ không chạy trên Cloudflare Pages vì nó cần Python + SQLite + API server.
-Giữ bản Source Clean riêng để quản trị/local backup. Nếu muốn Admin hoạt động online, backend cần được chuyển sang kiến trúc phù hợp Cloudflare (Workers + D1/R2) hoặc host Flask ở một dịch vụ chạy Python.
+## Render Flask
+
+- Build: `pip install -r requirements.txt`
+- Start: `gunicorn app:application --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120`
+- Thêm `DATABASE_URL` và 4 biến R2 theo `README_RENDER_CLOUDFLARE.md`.
+
+## Trước khi đổi database
+
+Nếu SQLite hiện tại đã có dữ liệu thật, vào Admin tải Backup trước. Có thể dùng `migrate_backup_to_postgres_r2.py` để nhập backup V27 vào PostgreSQL + R2.
