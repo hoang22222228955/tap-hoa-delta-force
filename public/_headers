@@ -3,3 +3,9 @@
   X-Frame-Options: DENY
   Referrer-Policy: same-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/admin*
+  Cache-Control: no-store
+
+/api/*
+  Cache-Control: no-store
