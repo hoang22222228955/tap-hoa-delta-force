@@ -25,7 +25,8 @@ export async function onRequest(context) {
   }
 
   const incoming = new URL(context.request.url);
-  const target = new URL(`${backend}/api/${suffix}`);
+  const upstreamPath = suffix === 'healthz' ? '/healthz' : `/api/${suffix}`;
+  const target = new URL(`${backend}${upstreamPath}`);
   target.search = incoming.search;
 
   const headers = new Headers(context.request.headers);

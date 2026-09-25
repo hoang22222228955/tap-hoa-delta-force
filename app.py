@@ -725,6 +725,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         return app.response_class('window.DELTA_CATALOG = '+json.dumps(data,ensure_ascii=False)+';\n',mimetype='text/javascript')
 
     @app.get('/healthz')
+    @app.get('/api/healthz')
     def healthz():
         with database() as db:
             db.execute('SELECT 1').fetchone()
