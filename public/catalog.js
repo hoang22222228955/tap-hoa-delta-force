@@ -1,0 +1,276 @@
+window.DELTA_CATALOG = {
+  "settings": {
+    "name": "TẠP HÓA",
+    "fullName": "Tạp Hóa Delta Force",
+    "zalo": "0394781498",
+    "demo": false,
+    "groups": {
+      "community": "",
+      "service": "",
+      "trade": ""
+    },
+    "categories": [
+      {
+        "id": "reg",
+        "name": "ACC REG SKIN"
+      },
+      {
+        "id": "op",
+        "name": "ACC CHẾ ĐỘ OP"
+      },
+      {
+        "id": "xu20",
+        "name": "ACC XU 20M"
+      },
+      {
+        "id": "xu50",
+        "name": "ACC XU 50M"
+      },
+      {
+        "id": "xu100",
+        "name": "ACC XU 100M"
+      },
+      {
+        "id": "service",
+        "name": "DỊCH VỤ"
+      }
+    ],
+    "communityBoxes": [
+      {
+        "id": "community",
+        "title": "Cộng đồng Delta Force",
+        "description": "Trao đổi acc, kho, giftcode và kinh nghiệm chơi Delta Force.",
+        "url": ""
+      },
+      {
+        "id": "service",
+        "title": "Dịch vụ Delta Force",
+        "description": "Trao đổi cày xu, kéo lão bản, Safe Box và lịch nhận đơn.",
+        "url": ""
+      },
+      {
+        "id": "trade",
+        "title": "Hỏi mua / thu mua acc",
+        "description": "Gửi ảnh kho và thông tin cần thiết để shop kiểm tra trước khi chốt.",
+        "url": ""
+      }
+    ],
+    "vndPerPoint": 10000,
+    "heroInterval": 2500,
+    "heroAutoplay": true,
+    "giftTotal": 300,
+    "giftPrice": 20000,
+    "giftNote": "Nhập giftcode theo lượt · Báo lại mã sai hoặc đã dùng.",
+    "deltaNews": [
+      {
+        "id": "NEWS-001",
+        "category": "THÔNG BÁO",
+        "date": "24/09/2026",
+        "title": "THÔNG BÁO KHO ACC DELTA FORCE",
+        "summary": "Kho acc Reg Skin, acc chế độ OP và các mốc xu tươi được cập nhật theo tình trạng thực tế.",
+        "content": "Tạp Hóa Delta Force cập nhật catalogue theo từng đợt hàng. Bạn có thể mở trang Kho acc, chọn nhóm phù hợp và nhắn Zalo 0394781498 để nhận ảnh kho cùng giá chốt mới nhất.\n\nGiá trên thẻ là giá tham khảo; shop sẽ xác nhận tình trạng, thông tin bàn giao và điều kiện giao dịch trước khi chốt.",
+        "image": "https://cdn.vn.garenanow.com/web/deltaforce/public/df_home/post_generic.jpg",
+        "featured": true,
+        "pinned": true
+      },
+      {
+        "id": "NEWS-002",
+        "category": "DỊCH VỤ",
+        "date": "24/09/2026",
+        "title": "DỊCH VỤ CÀY XU & KÉO LÃO BẢN ĐANG NHẬN",
+        "summary": "Cày xu chiến dịch, cày kho, kéo map thường, map khó và Safe Box 4 chương.",
+        "content": "Shop đang tiếp nhận các gói dịch vụ Delta Force theo lịch và tình trạng tài khoản. Nội dung, phạm vi, thời gian xử lý và giá chốt sẽ được xác nhận qua Zalo trước khi nhận.\n\nCam kết không tu tiên; các điều kiện bù khi gãy áp dụng đúng theo gói đã chốt.",
+        "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp",
+        "featured": false,
+        "pinned": false
+      },
+      {
+        "id": "NEWS-003",
+        "category": "GIFTCODE",
+        "date": "24/09/2026",
+        "title": "NHẬN NHẬP 300 GIFTCODE DELTA FORCE",
+        "summary": "Nhận nhập gói 300 code với giá trọn gói 20.000 ₫.",
+        "content": "Bạn gửi danh sách code qua Zalo để shop kiểm tra. Mã sai định dạng hoặc đã sử dụng sẽ được báo lại.\n\nKhông gửi mật khẩu, OTP hoặc mã khôi phục trong quá trình liên hệ.",
+        "image": "https://v2.files.garena.vn/deltaforce/public/development/common/2026/9/23/file.h4ammx6eau.jpeg",
+        "featured": false,
+        "pinned": false
+      }
+    ],
+    "marketItems": [],
+    "storefrontVersion": 3,
+    "giftHeroImage": "",
+    "giftHeroType": "video",
+    "giftHeroVideo": "https://www.tiktok.com/@phi_hng8/video/7686838780212317461",
+    "facebook": "https://www.facebook.com/",
+    "tiktok": "https://www.tiktok.com/@phi_hng8"
+  },
+  "products": [
+    {
+      "id": "REG-001",
+      "name": "ACC Reg Skin · Gói khởi động",
+      "category": "reg",
+      "price": 99000,
+      "spec": "Còn hàng · Bàn giao qua Zalo",
+      "image": "https://cdn.vn.garenanow.com/web/deltaforce/public/df_home/post_generic.jpg",
+      "atlasIndex": null,
+      "description": "Acc Reg Skin được kiểm tra tình trạng trước khi bàn giao. Shop gửi ảnh và thông tin thực tế qua Zalo."
+    },
+    {
+      "id": "REG-002",
+      "name": "ACC Reg Skin · Bộ sưu tập nâng cao",
+      "category": "reg",
+      "price": 249000,
+      "spec": "Còn hàng · Nhiều skin",
+      "image": "https://cdn.vn.garenanow.com/web/deltaforce/public/df_home/post_generic.jpg",
+      "atlasIndex": null,
+      "description": "Gói acc có bộ sưu tập skin phong phú hơn, phù hợp người muốn vào game với nền tảng sẵn có."
+    },
+    {
+      "id": "OP-001",
+      "name": "ACC OP · Gói chiến dịch",
+      "category": "op",
+      "price": 199000,
+      "spec": "Còn hàng · Chế độ Chiến Dịch",
+      "image": "https://web.df.garena.com/02_h5/240923_official_website/vi/pc/gamemode_list_02.jpg",
+      "atlasIndex": null,
+      "description": "Tài khoản chế độ Chiến Dịch dành cho người muốn trải nghiệm kho và tiến trình có sẵn."
+    },
+    {
+      "id": "OP-002",
+      "name": "ACC OP · Full kho chiến dịch",
+      "category": "op",
+      "price": 499000,
+      "spec": "Hỏi shop · Nhận ảnh kho trước khi chốt",
+      "image": "https://web.df.garena.com/02_h5/240923_official_website/vi/pc/gamemode_list_03.jpg",
+      "atlasIndex": null,
+      "description": "Gói acc OP có kho và tiến trình cao hơn. Liên hệ để nhận ảnh kho trước khi chốt."
+    },
+    {
+      "id": "XU-020",
+      "name": "ACC 20M xu tươi",
+      "category": "xu20",
+      "price": 180000,
+      "spec": "Còn hàng · Mốc 20M",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp",
+      "atlasIndex": null,
+      "description": "Acc có mốc 20M xu tươi. Mốc xu và giá sẽ được xác nhận lại theo kho thực tế."
+    },
+    {
+      "id": "XU-050",
+      "name": "ACC 50M xu tươi",
+      "category": "xu50",
+      "price": 420000,
+      "spec": "Còn hàng · Mốc 50M",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-box-3x3-4.webp",
+      "atlasIndex": null,
+      "description": "Gói acc 50M xu tươi dành cho người cần vốn xu lớn để triển khai kho."
+    },
+    {
+      "id": "XU-100",
+      "name": "ACC 100M xu tươi",
+      "category": "xu100",
+      "price": 780000,
+      "spec": "Hỏi shop · Mốc 100M",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-full-phong-ban-can-cu-ngam-9-scaled.webp",
+      "atlasIndex": null,
+      "description": "Gói acc mốc 100M xu tươi. Liên hệ trực tiếp để nhận ảnh kho và báo giá theo tình trạng."
+    },
+    {
+      "id": "SV-001",
+      "name": "Cày xu chiến dịch",
+      "category": "service",
+      "price": 0,
+      "spec": "10k / 1M",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp",
+      "atlasIndex": null,
+      "description": "Gói thường 10k/1M · trên 20M còn 9k/1M. Siêu nhanh 12k/1M · trên 10M còn 11k/1M."
+    },
+    {
+      "id": "SV-002",
+      "name": "Cày kho theo lịch sử đấu",
+      "category": "service",
+      "price": 0,
+      "spec": "8k / 1M",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-box-3x3-4.webp",
+      "atlasIndex": null,
+      "description": "Tính theo lịch sử đấu. Shop kiểm tra mục tiêu và phạm vi trước khi nhận."
+    },
+    {
+      "id": "SV-003",
+      "name": "Kéo lão bản · Map thường",
+      "category": "service",
+      "price": 0,
+      "spec": "130 / 1h · 150 / 1g",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/cay-full-phong-ban-can-cu-ngam-9-scaled.webp",
+      "atlasIndex": null,
+      "description": "130/1h · 150/1g, bù khi gãy. Thuê trên 2g được tặng thêm 1 trận."
+    },
+    {
+      "id": "SV-004",
+      "name": "Kéo lão bản · Map khó",
+      "category": "service",
+      "price": 0,
+      "spec": "180 / 1h · 200 / 1g",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/09/phi-thang-thuong-da-sac-5.webp",
+      "atlasIndex": null,
+      "description": "180/1h · 200/1g, bù khi gãy. Trao đổi rõ map và thời gian trước khi nhận."
+    },
+    {
+      "id": "SV-005",
+      "name": "Safe Box 4 chương",
+      "category": "service",
+      "price": 0,
+      "spec": "Giá nhắn riêng",
+      "image": "https://deltaforce.skin/wp-content/uploads/2026/04/vat-pham-gioi-han-binh-xang-luc-day-7.webp",
+      "atlasIndex": null,
+      "description": "Làm trong ngày. Giá nhắn riêng sau khi shop kiểm tra yêu cầu. Cam kết không tu tiên."
+    }
+  ],
+  "rewards": [
+    {
+      "id": "DELTA-20K",
+      "name": "Voucher 20.000đ",
+      "cost": 200,
+      "kind": "voucher",
+      "description": "Giảm 20.000đ cho đơn đủ điều kiện.",
+      "terms": "Dùng một lần, xác nhận với shop trước khi chốt.",
+      "stock": -1,
+      "per_customer_limit": 0,
+      "valid_days": 30,
+      "value_amount": 20000,
+      "min_order": 200000,
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "id": "DELTA-50K",
+      "name": "Voucher 50.000đ",
+      "cost": 450,
+      "kind": "voucher",
+      "description": "Giảm 50.000đ cho đơn đủ điều kiện.",
+      "terms": "Dùng một lần, xác nhận với shop trước khi chốt.",
+      "stock": -1,
+      "per_customer_limit": 0,
+      "valid_days": 30,
+      "value_amount": 50000,
+      "min_order": 500000,
+      "start_date": "",
+      "end_date": ""
+    },
+    {
+      "id": "DELTA-SV",
+      "name": "Ưu đãi dịch vụ Delta",
+      "cost": 600,
+      "kind": "voucher",
+      "description": "Voucher hỗ trợ giá cho dịch vụ đang nhận.",
+      "terms": "Giá trị áp dụng do shop xác nhận theo gói dịch vụ.",
+      "stock": -1,
+      "per_customer_limit": 0,
+      "valid_days": 30,
+      "value_amount": 70000,
+      "min_order": 500000,
+      "start_date": "",
+      "end_date": ""
+    }
+  ]
+};
