@@ -48,7 +48,7 @@ PUBLIC_ROOT = ROOT / 'public' if (ROOT / 'public').is_dir() else ROOT
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS admin (id INTEGER PRIMARY KEY CHECK(id=1), password_hash TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, detail_images TEXT NOT NULL DEFAULT '[]');
+CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, detail_images TEXT NOT NULL DEFAULT '[]', zalo_phone TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, phone TEXT NOT NULL REFERENCES customers(phone), item TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount>0), status TEXT NOT NULL DEFAULT 'pending', points INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS rewards (id TEXT PRIMARY KEY, name TEXT NOT NULL, cost INTEGER NOT NULL CHECK(cost>0), active INTEGER NOT NULL DEFAULT 1);
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), value T
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0),
   spec TEXT NOT NULL, image TEXT NOT NULL, atlas_index INTEGER, description TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
-  detail_images TEXT NOT NULL DEFAULT '[]', created_seq BIGSERIAL UNIQUE
+  detail_images TEXT NOT NULL DEFAULT '[]', zalo_phone TEXT NOT NULL DEFAULT '', created_seq BIGSERIAL UNIQUE
 );
 CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', created_seq BIGSERIAL UNIQUE);
 CREATE TABLE IF NOT EXISTS orders (
@@ -299,7 +299,7 @@ def request_id(value):
 
 # Additive migrations: old orders and spent points retain their original meaning.
 UPGRADE_COLUMNS = {
-    'products': {'detail_images': "TEXT NOT NULL DEFAULT '[]'"},
+    'products': {'detail_images': "TEXT NOT NULL DEFAULT '[]'", 'zalo_phone': "TEXT NOT NULL DEFAULT ''"},
     'rewards': {'kind': "TEXT NOT NULL DEFAULT 'model'", 'description': "TEXT NOT NULL DEFAULT ''",
         'terms': "TEXT NOT NULL DEFAULT ''", 'product_id': "TEXT NOT NULL DEFAULT ''",
         'stock': 'INTEGER NOT NULL DEFAULT -1', 'per_customer_limit': 'INTEGER NOT NULL DEFAULT 0',
@@ -582,6 +582,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         except (TypeError, json.JSONDecodeError):
             detail = []
         p['detailImages'] = [str(item).strip() for item in detail if isinstance(item, str) and str(item).strip()][:20] if isinstance(detail, list) else []
+        p['zalo'] = str(p.pop('zalo_phone', '') or '').strip()
         return p
 
     def store_data(db):
@@ -962,6 +963,7 @@ def create_app(data_dir=None, images_dir=None, testing=False):
         price=integer(d.get('price'),'Giá bán')
         spec=clean_text(d.get('spec',''),'Thông số',150,False)
         description=clean_text(d.get('description',''),'Mô tả',2000,False)
+        zalo=phone_number(d.get('zalo',''),True)
         atlas=None
         image=validated_product_image(d.get('image',''),'Ảnh đại diện')
         detail_input=d.get('detailImages',[])
@@ -981,8 +983,8 @@ def create_app(data_dir=None, images_dir=None, testing=False):
             allowed={c['id'] for c in settings(db).get('categories',[]) if isinstance(c,dict) and c.get('id')}
             if category not in allowed:
                 raise APIError('Danh mục không hợp lệ hoặc đã bị xóa.')
-            db.execute('INSERT INTO products(id,name,category,price,spec,image,atlas_index,description,active,detail_images) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,price=excluded.price,spec=excluded.spec,image=excluded.image,atlas_index=excluded.atlas_index,description=excluded.description,active=excluded.active,detail_images=excluded.detail_images',
-                       (pid,name,category,price,spec,image,atlas,description,active,json.dumps(detail_images,ensure_ascii=False)))
+            db.execute('INSERT INTO products(id,name,category,price,spec,image,atlas_index,description,active,detail_images,zalo_phone) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,price=excluded.price,spec=excluded.spec,image=excluded.image,atlas_index=excluded.atlas_index,description=excluded.description,active=excluded.active,detail_images=excluded.detail_images,zalo_phone=excluded.zalo_phone',
+                       (pid,name,category,price,spec,image,atlas,description,active,json.dumps(detail_images,ensure_ascii=False),zalo))
         return jsonify(ok=True)
 
     @app.delete('/api/admin/products/<pid>')

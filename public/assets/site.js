@@ -8,7 +8,8 @@
     accountPage: 1,
     servicePage: 1,
     newsCategory: 'all',
-    product: null
+    product: null,
+    service: null
   };
   let headerReady = false;
   const PAGE_SIZE = 15;
@@ -238,9 +239,113 @@
 
   function serviceCard(service) {
     return `<article class="df-service-card">
-      <div class="df-service-media">${imageMarkup(service.image, service.name, 'SV')}<span class="df-service-code">${escapeHTML(service.id || 'SV')}</span></div>
+      <button class="df-service-media" type="button" data-service-detail="${escapeHTML(service.id)}" aria-label="Xem chi tiết dịch vụ ${escapeHTML(service.name)}">${imageMarkup(service.image, service.name, 'SV')}<span class="df-service-code">${escapeHTML(service.id || 'SV')}</span><span class="df-service-view">XEM HỒ SƠ ↗</span></button>
       <div class="df-service-body"><small>SERVICE / DELTA FORCE</small><h3>${escapeHTML(service.name)}</h3><p>${escapeHTML(service.description || 'Shop sẽ xác nhận phạm vi và thời gian trước khi nhận.')}</p><div class="df-service-price">${escapeHTML(service.price || 'Liên hệ')}</div><button class="button button-small button-outline" type="button" data-service-id="${escapeHTML(service.id)}">Hỏi dịch vụ <span>↗</span></button></div>
     </article>`;
+  }
+
+  function serviceGallerySources(service) {
+    const raw = [service?.image, ...(Array.isArray(service?.detailImages) ? service.detailImages : [])];
+    const seen = new Set();
+    return raw.map(value => String(value || '').trim()).filter(value => value && !seen.has(value) && seen.add(value)).slice(0, 21);
+  }
+
+  function ensureServiceDetailModal() {
+    let modal = $('#service-detail-modal');
+    if (modal) return modal;
+    modal = document.createElement('dialog');
+    modal.id = 'service-detail-modal';
+    modal.className = 'modal service-detail-modal';
+    modal.setAttribute('aria-labelledby', 'service-detail-title');
+    modal.innerHTML = `<button class="modal-close service-detail-close" type="button" data-close-modal aria-label="Đóng">×</button>
+      <div class="service-detail-visual">
+        <div class="service-detail-rail" aria-hidden="true"><span>SERVICE OPS</span><b>DELTA FORCE</b></div>
+        <div class="service-detail-gallery" id="service-detail-gallery"></div>
+      </div>
+      <div class="service-detail-content">
+        <div class="service-detail-kicker"><span>CONTRACT FILE</span><b id="service-detail-code"></b></div>
+        <h2 id="service-detail-title"></h2>
+        <div class="service-detail-price" id="service-detail-price"></div>
+        <p class="service-detail-description" id="service-detail-description"></p>
+        <div class="service-detail-grid">
+          <div><span>QUY TRÌNH</span><strong>Xác nhận yêu cầu trước</strong></div>
+          <div><span>BÁO GIÁ</span><strong>Chốt rõ trước khi nhận</strong></div>
+          <div><span>LIÊN HỆ</span><strong id="service-detail-zalo"></strong></div>
+        </div>
+        <div class="service-detail-note"><i></i><p>Ảnh và giá trong hồ sơ dùng để tham khảo. Shop sẽ xác nhận phạm vi, thời gian và điều kiện của từng yêu cầu trước khi bắt đầu.</p></div>
+        <button class="button button-blue full-button service-detail-contact" id="service-detail-contact" type="button"><span class="zalo-pill">Zalo</span> Hỏi dịch vụ này</button>
+      </div>`;
+    document.body.append(modal);
+    modal.addEventListener('click', event => {
+      if (event.target === modal) closeDialog(modal);
+      const thumb = event.target.closest('[data-service-gallery-index]');
+      if (thumb) { event.preventDefault(); selectServiceGallery(Number(thumb.dataset.serviceGalleryIndex)); return; }
+      const step = event.target.closest('[data-service-gallery-step]');
+      if (step) { event.preventDefault(); stepServiceGallery(Number(step.dataset.serviceGalleryStep)); }
+    });
+    modal.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); stepServiceGallery(-1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); stepServiceGallery(1); }
+    });
+    $('#service-detail-contact', modal)?.addEventListener('click', () => {
+      closeDialog(modal);
+      if (state.service) openContact('service', state.service);
+    });
+    return modal;
+  }
+
+  function renderServiceGallery(service) {
+    const root = $('#service-detail-gallery');
+    if (!root) return;
+    const sources = serviceGallerySources(service);
+    if (!sources.length) { root.innerHTML = '<div class="service-detail-empty">Chưa có ảnh dịch vụ.</div>'; return; }
+    const thumbs = sources.map((source,index)=>`<button class="service-detail-thumb${index===0?' is-current':''}" type="button" data-service-gallery-index="${index}" aria-label="Xem ảnh dịch vụ ${index+1}"><img src="${escapeHTML(source)}" alt="" loading="lazy"></button>`).join('');
+    root.dataset.galleryIndex = '0';
+    root.innerHTML = `<div class="service-detail-stage">
+      <div class="service-detail-counter"><span>VISUAL LOG</span><strong id="service-detail-count">01 / ${String(sources.length).padStart(2,'0')}</strong></div>
+      <img class="service-detail-main" id="service-detail-main" src="${escapeHTML(sources[0])}" alt="${escapeHTML(service.name)} — ảnh 1">
+      <button class="service-detail-nav service-detail-prev" type="button" data-service-gallery-step="-1" aria-label="Ảnh trước"${sources.length<2?' disabled':''}>‹</button>
+      <button class="service-detail-nav service-detail-next" type="button" data-service-gallery-step="1" aria-label="Ảnh tiếp theo"${sources.length<2?' disabled':''}>›</button>
+    </div><div class="service-detail-thumbs">${thumbs}</div>`;
+  }
+
+  function selectServiceGallery(index) {
+    const root = $('#service-detail-gallery');
+    const sources = serviceGallerySources(state.service);
+    if (!root || !sources.length) return;
+    const next = Math.max(0, Math.min(Number(index)||0, sources.length-1));
+    root.dataset.galleryIndex = String(next);
+    const image = $('#service-detail-main', root);
+    if (image) { image.src = sources[next]; image.alt = `${state.service?.name || 'Dịch vụ'} — ảnh ${next+1}`; }
+    const count = $('#service-detail-count', root);
+    if (count) count.textContent = `${String(next+1).padStart(2,'0')} / ${String(sources.length).padStart(2,'0')}`;
+    $$('[data-service-gallery-index]', root).forEach(button => {
+      const active = Number(button.dataset.serviceGalleryIndex) === next;
+      button.classList.toggle('is-current', active);
+      if (active) button.scrollIntoView({block:'nearest',inline:'nearest'});
+    });
+  }
+
+  function stepServiceGallery(delta) {
+    const root = $('#service-detail-gallery');
+    const sources = serviceGallerySources(state.service);
+    if (!root || sources.length < 2) return;
+    const current = Number(root.dataset.galleryIndex || 0);
+    selectServiceGallery((current + delta + sources.length) % sources.length);
+  }
+
+  function openServiceDetail(service) {
+    if (!service) return;
+    state.service = service;
+    const modal = ensureServiceDetailModal();
+    renderServiceGallery(service);
+    const specificZalo = String(service.zalo || state.catalog.settings.zalo || '').trim();
+    $('#service-detail-code', modal).textContent = service.id || 'SERVICE';
+    $('#service-detail-title', modal).textContent = service.name || 'Dịch vụ Delta Force';
+    $('#service-detail-price', modal).textContent = service.price || 'Liên hệ';
+    $('#service-detail-description', modal).textContent = service.description || 'Shop sẽ xác nhận phạm vi và thời gian trước khi nhận.';
+    $('#service-detail-zalo', modal).textContent = specificZalo || 'Liên hệ shop';
+    openDialog(modal);
   }
 
   function newsCard(item, variant = 'list') {
@@ -517,6 +622,7 @@
     set('modal-description', product.description || 'Shop sẽ xác nhận thông tin thực tế trước khi giao dịch.');
     set('modal-code', product.id);
     set('modal-status', product.status || 'Hỏi shop');
+    set('modal-zalo', product.zalo || state.catalog.settings.zalo || 'Liên hệ shop');
     const imageCount = productGallerySources(product).length;
     set('modal-note', imageCount > 1 ? `Có ${imageCount} ảnh tham khảo. Giá và tình trạng có thể thay đổi theo kho; hãy hỏi shop để xác nhận trước khi chốt.` : 'Giá và tình trạng là thông tin tham khảo; hãy hỏi shop để nhận ảnh kho và điều kiện bàn giao mới nhất.');
     openDialog(modal);
@@ -537,7 +643,11 @@
     const text = $('#contact-text');
     if (text) text.value = contactMessage(type, item);
     const link = $('#open-zalo');
-    if (link) link.href = window.DF.zaloURL(state.catalog.settings.zalo);
+    const contactZalo = String(item?.zalo || state.catalog.settings.zalo || '').trim();
+    if (link) {
+      link.href = window.DF.zaloURL(contactZalo);
+      link.innerHTML = `<span class="zalo-pill">Zalo</span> Mở Zalo ${escapeHTML(contactZalo || 'shop')}`;
+    }
     const status = $('#contact-status');
     if (status) { status.hidden = true; status.textContent = ''; }
     openDialog(modal);
@@ -571,6 +681,12 @@
       if (buy) {
         const item = state.catalog.products.find(product => product.id === buy.dataset.buy);
         if (item) openContact('product', item);
+        return;
+      }
+      const serviceDetail = event.target.closest('[data-service-detail]');
+      if (serviceDetail) {
+        const item = state.catalog.services.find(entry => entry.id === serviceDetail.dataset.serviceDetail);
+        if (item) openServiceDetail(item);
         return;
       }
       const service = event.target.closest('[data-service-id]');

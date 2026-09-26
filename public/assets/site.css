@@ -3399,3 +3399,288 @@ html[data-theme="light"] .df-page {
   }
   .df-page #account-tabs .df-tab.active { color: #031b12 !important; }
 }
+
+/* V30 — Service dossier modal + per-item Zalo routing. */
+.df-page .df-service-media {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: #07111e;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+.df-page .df-service-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 54%, rgba(3,10,16,.78));
+  opacity: .28;
+  transition: opacity .2s ease;
+  pointer-events: none;
+}
+.df-page .df-service-media:hover::after,
+.df-page .df-service-media:focus-visible::after { opacity: .72; }
+.df-page .df-service-media:focus-visible { outline: 2px solid #ffca55; outline-offset: -2px; }
+.df-page .df-service-view {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 11px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,202,85,.72);
+  background: rgba(4,13,20,.88);
+  color: #ffd166;
+  font: 800 10px/1 "Chakra Petch", sans-serif;
+  letter-spacing: .08em;
+  transform: translateY(6px);
+  opacity: 0;
+  transition: .2s ease;
+  pointer-events: none;
+}
+.df-page .df-service-media:hover .df-service-view,
+.df-page .df-service-media:focus-visible .df-service-view { transform: translateY(0); opacity: 1; }
+
+.df-page .service-detail-modal {
+  width: min(1120px, calc(100% - 34px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid rgba(255,196,70,.42);
+  background: #06111b;
+  color: #edf7ff;
+  grid-template-columns: minmax(0, 1.34fr) minmax(330px, .86fr);
+  overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0,0,0,.66), 0 0 0 1px rgba(43,237,157,.05) inset;
+}
+.df-page .service-detail-modal[open] { display: grid; }
+.df-page .service-detail-modal::backdrop { background: rgba(0,7,12,.84); backdrop-filter: blur(6px); }
+.df-page .service-detail-close {
+  border-color: rgba(255,194,54,.8) !important;
+  box-shadow: 0 0 0 1px rgba(255,194,54,.15) inset;
+}
+.df-page .service-detail-visual {
+  position: relative;
+  min-width: 0;
+  padding: 22px 22px 18px 76px;
+  background:
+    linear-gradient(rgba(31,235,157,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31,235,157,.035) 1px, transparent 1px),
+    radial-gradient(circle at 20% 16%, rgba(34,237,158,.09), transparent 34%),
+    #07151c;
+  background-size: 34px 34px, 34px 34px, auto, auto;
+  border-right: 1px solid rgba(255,196,70,.18);
+}
+.df-page .service-detail-rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 54px;
+  border-right: 1px solid rgba(255,194,54,.18);
+  background: rgba(3,13,18,.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: "Chakra Petch", sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.df-page .service-detail-rail span { color: #ffd166; font-size: 9px; font-weight: 800; }
+.df-page .service-detail-rail b { color: rgba(184,221,211,.45); font-size: 8px; }
+.df-page .service-detail-gallery { min-width: 0; }
+.df-page .service-detail-stage {
+  position: relative;
+  min-height: 420px;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(64,228,162,.2);
+  background: #02090d;
+}
+.df-page .service-detail-stage::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255,204,88,.07), inset 0 -78px 70px rgba(0,0,0,.25);
+}
+.df-page .service-detail-main {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #02090d;
+}
+.df-page .service-detail-counter {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.df-page .service-detail-counter span,
+.df-page .service-detail-counter strong {
+  padding: 6px 9px;
+  border: 1px solid rgba(255,199,76,.28);
+  background: rgba(2,11,16,.82);
+  font: 800 9px/1 "Chakra Petch", sans-serif;
+  letter-spacing: .09em;
+}
+.df-page .service-detail-counter span { color: #74efb6; }
+.df-page .service-detail-counter strong { color: #ffd166; }
+.df-page .service-detail-nav {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  width: 42px;
+  height: 62px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(255,197,69,.54);
+  background: rgba(2,14,19,.88);
+  color: #ffd166;
+  font: 500 34px/1 sans-serif;
+  cursor: pointer;
+}
+.df-page .service-detail-prev { left: 12px; }
+.df-page .service-detail-next { right: 12px; }
+.df-page .service-detail-nav:hover { background: rgba(68,48,6,.82); border-color: #ffd166; }
+.df-page .service-detail-nav:disabled { display: none; }
+.df-page .service-detail-thumbs {
+  display: flex;
+  gap: 9px;
+  margin-top: 11px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,199,76,.55) transparent;
+}
+.df-page .service-detail-thumb {
+  flex: 0 0 92px;
+  width: 92px;
+  height: 62px;
+  padding: 3px;
+  border: 1px solid rgba(82,128,147,.42);
+  background: #031018;
+  opacity: .66;
+  cursor: pointer;
+}
+.df-page .service-detail-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.df-page .service-detail-thumb:hover { opacity: 1; border-color: #ffd166; }
+.df-page .service-detail-thumb.is-current { opacity: 1; border-color: #35e99b; box-shadow: 0 0 0 1px rgba(53,233,155,.22); }
+.df-page .service-detail-empty { min-height: 400px; display: grid; place-items: center; color: #88a2ad; }
+
+.df-page .service-detail-content {
+  position: relative;
+  min-width: 0;
+  padding: 72px 34px 30px;
+  background:
+    linear-gradient(135deg, rgba(255,198,69,.055), transparent 30%),
+    linear-gradient(180deg, #0b1f2d, #071621);
+  overflow-y: auto;
+}
+.df-page .service-detail-content::before {
+  content: "";
+  position: absolute;
+  top: 45px;
+  left: 34px;
+  width: 48px;
+  height: 2px;
+  background: #ffd166;
+  box-shadow: 58px 0 0 rgba(61,237,163,.55);
+}
+.df-page .service-detail-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #63e6aa;
+  font: 800 9px/1 "Chakra Petch", sans-serif;
+  letter-spacing: .16em;
+}
+.df-page .service-detail-kicker b { color: #ffd166; }
+.df-page .service-detail-content h2 {
+  margin: 0 0 10px;
+  color: #f7fbff;
+  font-family: "Chakra Petch", sans-serif;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: .98;
+  text-transform: uppercase;
+}
+.df-page .service-detail-price {
+  margin: 18px 0 9px;
+  color: #ffd166;
+  font: 800 clamp(20px, 2.3vw, 31px)/1 "Chakra Petch", sans-serif;
+  letter-spacing: .015em;
+}
+.df-page .service-detail-description { color: #c2d1dc; line-height: 1.55; margin: 0 0 22px; }
+.df-page .service-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid rgba(118,172,193,.2);
+  border-bottom: 1px solid rgba(118,172,193,.2);
+  margin: 0 0 18px;
+}
+.df-page .service-detail-grid > div {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(118,172,193,.12);
+}
+.df-page .service-detail-grid > div:last-child { border-bottom: 0; }
+.df-page .service-detail-grid span { color: #7193a3; font: 700 8px/1 "Chakra Petch",sans-serif; letter-spacing: .12em; }
+.df-page .service-detail-grid strong { color: #e8f2f8; font-size: 12px; text-align: right; }
+.df-page .service-detail-note {
+  display: grid;
+  grid-template-columns: 3px 1fr;
+  gap: 13px;
+  padding: 13px 14px;
+  margin-bottom: 18px;
+  background: rgba(255,198,69,.07);
+  border: 1px solid rgba(255,198,69,.1);
+}
+.df-page .service-detail-note i { background: linear-gradient(#ffd166,#43e5a1); }
+.df-page .service-detail-note p { margin: 0; color: #b8c8d1; font-size: 12px; line-height: 1.55; }
+.df-page .service-detail-contact { margin-top: 4px; }
+
+@media (max-width: 900px) {
+  .df-page .service-detail-modal { grid-template-columns: 1fr; width: min(760px, calc(100% - 18px)); overflow-y: auto; }
+  .df-page .service-detail-modal[open] { display: block; }
+  .df-page .service-detail-visual { padding: 14px 14px 12px 54px; border-right: 0; border-bottom: 1px solid rgba(255,196,70,.18); }
+  .df-page .service-detail-rail { width: 40px; }
+  .df-page .service-detail-stage { min-height: 0; aspect-ratio: 16 / 10; }
+  .df-page .service-detail-content { padding: 58px 22px 22px; }
+  .df-page .service-detail-content::before { top: 36px; left: 22px; }
+}
+@media (max-width: 600px) {
+  .df-page .df-service-view { display: none; }
+  .df-page .service-detail-modal { width: calc(100% - 10px); max-height: calc(100dvh - 10px); }
+  .df-page .service-detail-visual { padding: 9px 9px 9px 38px; }
+  .df-page .service-detail-rail { width: 30px; gap: 10px; }
+  .df-page .service-detail-rail span { font-size: 6.8px; }
+  .df-page .service-detail-rail b { font-size: 6px; }
+  .df-page .service-detail-stage { aspect-ratio: 1 / 1; }
+  .df-page .service-detail-nav { width: 34px; height: 48px; font-size: 27px; }
+  .df-page .service-detail-prev { left: 7px; }
+  .df-page .service-detail-next { right: 7px; }
+  .df-page .service-detail-thumb { flex-basis: 68px; width: 68px; height: 48px; }
+  .df-page .service-detail-content { padding: 52px 16px 18px; }
+  .df-page .service-detail-content::before { left: 16px; }
+  .df-page .service-detail-content h2 { font-size: 25px; }
+  .df-page .service-detail-price { font-size: 20px; }
+  .df-page .service-detail-grid > div { grid-template-columns: 80px 1fr; padding: 9px 0; }
+  .df-page .service-detail-grid strong { font-size: 10px; }
+  .df-page .service-detail-note p { font-size: 10px; }
+}

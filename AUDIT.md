@@ -10,3 +10,8 @@
 - Có script di chuyển backup V27 SQLite + images sang PostgreSQL + R2.
 - Python syntax: checked.
 - Pages Functions JS syntax: checked.
+
+## V30
+- Added per-product/service `zalo_phone` with additive DB migration.
+- Added dedicated service dossier modal with gallery and item-specific Zalo routing.
+- Added visible Zalo quick suggestions in Admin product/service editor.
