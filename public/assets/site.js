@@ -359,7 +359,9 @@
     const productGrid = $('#home-product-grid');
     if (productGrid) {
       const featured = state.catalog.products.filter(item => item.featured);
-      productGrid.innerHTML = (featured.length ? featured : state.catalog.products).slice(0, 4).map(productCard).join('');
+      const featuredIds = new Set(featured.map(item => item.id));
+      const showcase = [...featured, ...state.catalog.products.filter(item => !featuredIds.has(item.id))];
+      productGrid.innerHTML = showcase.slice(0, 6).map(productCard).join('');
       hydrateImages(productGrid);
     }
     const serviceGrid = $('#home-service-grid');

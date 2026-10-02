@@ -560,6 +560,11 @@ def create_app(data_dir=None, images_dir=None, testing=False):
                 summary = item.get('summary', '') if isinstance(item, dict) else ''
                 sample = summary == 'Nhận nhập tối đa 300 code, giá 20.000đ mỗi code và xử lý theo lượt.'
                 sample = sample or (isinstance(summary, str) and re.fullmatch(r'Nhận nhập gói \d+ code với giá trọn gói [\d.]+ ₫\.', summary))
+                if isinstance(item, dict) and item.get('id') == 'NEWS-002':
+                    old_news_002_image = 'https://deltaforce.skin/wp-content/uploads/2026/04/cay-xu-sieu-toc-15k-1m-xu-5-scaled.webp'
+                    if str(item.get('image', '')).strip() == old_news_002_image:
+                        item = dict(item)
+                        item['image'] = 'assets/news-cay-kho-lich-su-dau.png'
                 if isinstance(item, dict) and item.get('id') == 'NEWS-003' and sample:
                     item = dict(item)
                     total = value.get('giftTotal', 300)
