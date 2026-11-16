@@ -174,3 +174,60 @@
     transform: none;
   }
 }
+
+/* Keep the product inquiry button visible while the phone dialog scrolls. */
+@media (max-width: 767px) and (pointer: coarse),
+       (max-width: 960px) and (max-height: 540px) and (pointer: coarse) {
+  .df-page #product-modal[open] {
+    --product-top: calc(6px + env(safe-area-inset-top, 0px));
+    --product-right: calc(6px + env(safe-area-inset-right, 0px));
+    --product-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    --product-left: calc(6px + env(safe-area-inset-left, 0px));
+    --buy-height: 48px;
+    --buy-padding-block: 8px;
+    --buy-padding-inline: 14px;
+    --buy-bar-height: calc(var(--buy-height) + 2 * var(--buy-padding-block) + 1px);
+
+    position: fixed;
+    inset: var(--product-top) var(--product-right) var(--product-bottom) var(--product-left);
+    display: block;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    overscroll-behavior-y: contain;
+    scroll-padding-bottom: var(--buy-bar-height);
+  }
+
+  .df-page #product-modal[open] .modal-content {
+    /* Leave room to read the last line above the bar when fully scrolled. */
+    padding-bottom: calc(20px + var(--buy-bar-height));
+  }
+
+  .df-page #product-modal[open] .modal-content::after {
+    content: "";
+    position: fixed;
+    z-index: 9;
+    right: calc(var(--product-right) + 1px);
+    bottom: calc(var(--product-bottom) + 1px);
+    left: calc(var(--product-left) + 1px);
+    height: var(--buy-bar-height);
+    box-sizing: border-box;
+    border-top: 1px solid rgba(79, 219, 157, .24);
+    background: #0a1b28;
+    pointer-events: none;
+  }
+
+  .df-page #product-modal[open] #modal-buy {
+    position: fixed;
+    z-index: 10;
+    right: calc(var(--product-right) + var(--buy-padding-inline) + 1px);
+    bottom: calc(var(--product-bottom) + var(--buy-padding-block) + 1px);
+    left: calc(var(--product-left) + var(--buy-padding-inline) + 1px);
+    width: auto;
+    min-height: var(--buy-height);
+    margin: 0;
+    box-shadow: none;
+  }
+}
